@@ -3,6 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 const newTaskId = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 function todayKey() {
@@ -11,18 +17,22 @@ function todayKey() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function POST(request) {
   const auth = request.headers.get('authorization') || '';
   const presented = auth.replace(/^Bearer\s+/i, '').trim();
   const expected = process.env.VOICE_CAPTURE_TOKEN;
   const userId = process.env.VOICE_CAPTURE_USER_ID;
-  if (!expected || !userId) return NextResponse.json({ error: 'voice_capture_not_configured' }, { status: 500 });
-  if (!presented || presented !== expected) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!expected || !userId) return NextResponse.json({ error: 'voice_capture_not_configured' }, { status: 500, headers: CORS_HEADERS });
+  if (!presented || presented !== expected) return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers: CORS_HEADERS });
 
   let body;
   try { body = await request.json(); } catch { body = {}; }
   const id = (body.id || '').trim();
-  if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400, headers: CORS_HEADERS });
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -37,7 +47,7 @@ export async function POST(request) {
     .eq('user_id', userId)
     .single();
 
-  if (fetchErr || !bd) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  if (fetchErr || !bd) return NextResponse.json({ error: 'not_found' }, { status: 404, headers: CORS_HEADERS });
 
   const taskId = newTaskId();
   const { error: insertErr } = await supabase
@@ -51,9 +61,9 @@ export async function POST(request) {
       started: false,
     });
 
-  if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
+  if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500, headers: CORS_HEADERS });
 
   await supabase.from('brain_dump').delete().eq('id', id).eq('user_id', userId);
 
-  return NextResponse.json({ ok: true, task_id: taskId });
+  return NextResponse.json({ ok: true, task_id: taskId }, { headers: CORS_HEADERS });
 }

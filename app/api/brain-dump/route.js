@@ -3,6 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 function authCheck(request) {
   const auth = request.headers.get('authorization') || '';
   const presented = auth.replace(/^Bearer\s+/i, '').trim();
@@ -21,9 +27,13 @@ function supabaseAdmin() {
   );
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function GET(request) {
   const a = authCheck(request);
-  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
+  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status, headers: CORS_HEADERS });
 
   const supabase = supabaseAdmin();
   const { data, error } = await supabase
@@ -33,17 +43,17 @@ export async function GET(request) {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ items: data });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: CORS_HEADERS });
+  return NextResponse.json({ items: data }, { headers: CORS_HEADERS });
 }
 
 export async function DELETE(request) {
   const a = authCheck(request);
-  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
+  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status, headers: CORS_HEADERS });
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
+  if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400, headers: CORS_HEADERS });
 
   const supabase = supabaseAdmin();
   const { error } = await supabase
@@ -52,6 +62,6 @@ export async function DELETE(request) {
     .eq('user_id', a.userId)
     .eq('id', id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: CORS_HEADERS });
+  return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
 }
