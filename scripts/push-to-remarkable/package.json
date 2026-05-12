@@ -1,0 +1,14 @@
+{
+  "name": "align-remarkable-push",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "push": "node push.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "pdfkit": "^0.15.0"
+  }
+}
