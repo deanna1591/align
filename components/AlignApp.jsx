@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Check, X, Plus, ChevronLeft, ChevronRight, Sparkles, Brain,
   Play, Pause, Flame, Sunrise, Minimize2, CircleDot, MoreHorizontal,
-  RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle,
+  RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle, Settings,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
+import SettingsDrawer from './SettingsDrawer';
 
 // ============================================================
 //  HELPERS
@@ -516,6 +517,7 @@ export default function AlignApp() {
   const [brainOpen, setBrainOpen] = useState(false);
   const [focusTask, setFocusTask] = useState(null);
   const [closureOpen, setClosureOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const weekGridRef = useRef(null);
@@ -572,10 +574,19 @@ export default function AlignApp() {
       const tag = (e.target.tagName || '').toLowerCase();
       const isTyping = tag === 'input' || tag === 'textarea';
       if (e.key === 'b' && !isTyping) { e.preventDefault(); setBrainOpen(v => !v); }
-      if (e.key === 'Escape') { setBrainOpen(false); setFocusTask(null); setClosureOpen(false); }
+      if (e.key === 'Escape') { setBrainOpen(false); setFocusTask(null); setClosureOpen(false); setSettingsOpen(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Auto-open settings drawer if Google OAuth just redirected us back
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('google_connected') || params.has('google_error')) {
+      setSettingsOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -644,6 +655,8 @@ export default function AlignApp() {
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Brain dump (B)"><Brain size={14} /></button>
             <button onClick={() => setClosureOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="End of day"><Sunrise size={14} /></button>
+            <button onClick={() => setSettingsOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
+              style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Settings"><Settings size={14} /></button>
             <button onClick={s.signOut} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Sign out"><LogOut size={14} /></button>
           </div>
@@ -710,6 +723,7 @@ export default function AlignApp() {
         onComplete={(id) => focusTask && s.toggleTask(focusTask.dKey, id)}
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} />
 
       <button onClick={() => setBrainOpen(true)}
         className="fixed bottom-5 right-5 md:bottom-6 md:right-6 w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
