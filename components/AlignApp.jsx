@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 import SettingsDrawer from './SettingsDrawer';
+import QuickCaptureDrawer from './QuickCaptureDrawer';
 
 // ============================================================
 //  HELPERS
@@ -565,6 +566,7 @@ export default function AlignApp() {
   const [focusTask, setFocusTask] = useState(null);
   const [closureOpen, setClosureOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [events, setEvents] = useState([]);
@@ -669,7 +671,8 @@ export default function AlignApp() {
       const tag = (e.target.tagName || '').toLowerCase();
       const isTyping = tag === 'input' || tag === 'textarea';
       if (e.key === 'b' && !isTyping) { e.preventDefault(); setBrainOpen(v => !v); }
-      if (e.key === 'Escape') { setBrainOpen(false); setFocusTask(null); setClosureOpen(false); setSettingsOpen(false); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setQuickOpen(v => !v); }
+      if (e.key === 'Escape') { setBrainOpen(false); setFocusTask(null); setClosureOpen(false); setSettingsOpen(false); setQuickOpen(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -821,11 +824,12 @@ export default function AlignApp() {
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} />
+      <QuickCaptureDrawer open={quickOpen} onClose={() => setQuickOpen(false)} onCapture={s.addBrain} />
 
-      <button onClick={() => setBrainOpen(true)}
+      <button onClick={() => setQuickOpen(true)}
         className="fixed bottom-5 right-5 md:bottom-6 md:right-6 w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
-        style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, color: palette.accent, boxShadow: '0 4px 16px rgba(27,24,19,0.06)', zIndex: 20 }}
-        title="Brain dump (B)"><Brain size={18} /></button>
+        style={{ background: palette.accent, color: 'white', boxShadow: '0 4px 20px rgba(124,164,129,0.40)', zIndex: 30 }}
+        title="Quick capture (⌘K)"><Brain size={18} /></button>
     </div>
   );
 }
