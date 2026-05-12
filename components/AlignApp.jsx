@@ -150,7 +150,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
 // ============================================================
 //  DAY COLUMN
 // ============================================================
-function DayColumn({ date, tasks, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
+function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
   dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList }) {
   const [input, setInput] = useState('');
   const today = isToday(date);
@@ -184,6 +184,53 @@ function DayColumn({ date, tasks, onAdd, onToggle, onEdit, onDelete, onStart, on
         </div>
       </div>
       <div className="flex-1 space-y-0.5 pl-2">
+        {events && events.length > 0 && (
+          <div className="mb-2 space-y-1">
+            {events.map((ev) => (
+              <a
+                key={`${ev.sourceEmail}-${ev.id}`}
+                href={ev.htmlLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-2 py-1 transition-opacity hover:opacity-100"
+                style={{ opacity: 0.85 }}
+                title={ev.location ? `${ev.title} — ${ev.location}` : ev.title}
+              >
+                <span
+                  className="mt-[5px] flex-shrink-0 rounded-sm"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    background: ev.source === 'Work' ? '#6B7F8D' : palette.accent,
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div style={{
+                    fontFamily: 'Inter Tight, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: palette.ink,
+                    letterSpacing: '-0.005em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {ev.title}
+                  </div>
+                  <div style={{
+                    fontFamily: 'Inter Tight, sans-serif',
+                    fontSize: '10px',
+                    color: palette.ink3,
+                    letterSpacing: '0.02em',
+                  }}>
+                    {ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
+                  </div>
+                </div>
+              </a>
+            ))}
+            {tasks.length > 0 && <div className="h-px my-2" style={{ background: palette.borderSoft }} />}
+          </div>
+        )}
         {tasks.map((task) => (
           <TaskRow key={task.id} task={task}
             onToggle={() => onToggle(dateKey(date), task.id)}
@@ -520,6 +567,7 @@ export default function AlignApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [events, setEvents] = useState([]);
   const weekGridRef = useRef(null);
 
   // Set default viewMode based on screen size on mount
@@ -541,6 +589,48 @@ export default function AlignApp() {
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
   }), [weekStart]);
+
+  // Fetch calendar events for current week, refetch every 60 seconds while open
+  useEffect(() => {
+    if (!s.user) return;
+    let cancelled = false;
+    const fetchEvents = async () => {
+      try {
+        const start = dateKey(days[0]);
+        const end = dateKey(days[6]);
+        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.events) setEvents(data.events);
+      } catch (e) {
+        console.error('[Align] Events fetch error:', e);
+      }
+    };
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [s.user, weekStart, days]);
+
+  // Group events by date for fast lookup
+  const eventsByDate = useMemo(() => {
+    const out = {};
+    for (const ev of events) {
+      // Pull date portion in local timezone
+      const d = new Date(ev.start);
+      const k = dateKey(d);
+      if (!out[k]) out[k] = [];
+      out[k].push(ev);
+    }
+    // Sort each day's events: all-day first, then by start time
+    for (const k of Object.keys(out)) {
+      out[k].sort((a, b) => {
+        if (a.allDay && !b.allDay) return -1;
+        if (!a.allDay && b.allDay) return 1;
+        return new Date(a.start) - new Date(b.start);
+      });
+    }
+    return out;
+  }, [events]);
 
   const todayKey = dateKey(today0());
   const todayTasks = s.tasks[todayKey] || [];
@@ -684,6 +774,7 @@ export default function AlignApp() {
           <div ref={weekGridRef} className="flex flex-col gap-8">
             {days.map(d => (
               <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
+                events={eventsByDate[dateKey(d)] || []}
                 onAdd={(text) => s.addTask(dateKey(d), text)}
                 onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
                 onStart={s.startTask} onPause={s.pauseTask}
@@ -699,6 +790,7 @@ export default function AlignApp() {
             className="flex md:grid md:grid-cols-7 gap-x-4 gap-y-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 md:pb-0 align-week-scroll">
             {days.map(d => (
               <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
+                events={eventsByDate[dateKey(d)] || []}
                 onAdd={(text) => s.addTask(dateKey(d), text)}
                 onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
                 onStart={s.startTask} onPause={s.pauseTask}
