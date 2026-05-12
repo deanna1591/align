@@ -728,7 +728,7 @@ export default function AlignApp() {
         onSelectFocus={(t) => setFocusTask({ dKey: todayKey, task: t })}
         currentFocus={focusTask?.task} />
 
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
+      <div className="max-w-[1800px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
         <header className="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-3 md:gap-4">
           <div className="flex items-baseline gap-4">
             <h1 style={{
@@ -826,10 +826,17 @@ export default function AlignApp() {
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} />
       <QuickCaptureDrawer open={quickOpen} onClose={() => setQuickOpen(false)} onCapture={s.addBrain} />
 
-      <button onClick={() => setQuickOpen(true)}
-        className="fixed bottom-5 right-5 md:bottom-6 md:right-6 w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
-        style={{ background: palette.accent, color: 'white', boxShadow: '0 4px 20px rgba(124,164,129,0.40)', zIndex: 30 }}
-        title="Quick capture (⌘K)"><Brain size={18} /></button>
+      {/* Floating action buttons */}
+      <div className="fixed bottom-5 right-5 md:bottom-6 md:right-6 flex flex-col items-end gap-2" style={{ zIndex: 30 }}>
+        <button onClick={() => setBrainOpen(true)}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
+          style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, color: palette.ink2, boxShadow: '0 2px 8px rgba(27,24,19,0.05)' }}
+          title="Brain dump list (B)"><ListTodo size={14} /></button>
+        <button onClick={() => setQuickOpen(true)}
+          className="w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
+          style={{ background: palette.accent, color: 'white', boxShadow: '0 4px 20px rgba(124,164,129,0.40)' }}
+          title="Quick capture (⌘K)"><Brain size={18} /></button>
+      </div>
     </div>
   );
 }
