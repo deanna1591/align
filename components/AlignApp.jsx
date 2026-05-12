@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Check, X, Plus, ChevronLeft, ChevronRight, Sparkles, Brain,
   Play, Pause, Flame, Sunrise, Minimize2, CircleDot, MoreHorizontal,
-  RotateCcw, Target, Command, LogOut,
+  RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 
@@ -43,6 +43,8 @@ const palette = {
   accentSoft: 'rgba(124,164,129,0.10)',
   accentSofter: 'rgba(124,164,129,0.05)',
   warm: '#C9824A',
+  errBg: '#FBE9E5',
+  errInk: '#8C3A2A',
 };
 
 // ============================================================
@@ -84,7 +86,6 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
     if (!value.trim()) setValue(task.text);
     setEditing(false);
   };
-
   return (
     <div className="group relative flex items-start gap-2 py-1" draggable={!editing} {...dragHandlers}>
       <button onClick={() => onToggle(task.id)}
@@ -98,7 +99,6 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
         {task.completed && <Check size={10} color="white" strokeWidth={3.5} />}
         {inMotion && <span className="absolute -inset-1 rounded animate-pulse-soft" style={{ border: `1px solid ${palette.accent}`, opacity: 0.4 }} />}
       </button>
-
       {editing ? (
         <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onBlur={saveEdit}
           onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setValue(task.text); setEditing(false); } }}
@@ -120,7 +120,6 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
             borderRadius: 3,
           }}>{task.text}</div>
       )}
-
       <div className="flex items-center gap-1 flex-shrink-0 mt-[3px]">
         {!task.completed && (inMotion ? (
           <button onClick={(e) => { e.stopPropagation(); onPause(task.id); }}
@@ -151,20 +150,23 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
 //  DAY COLUMN
 // ============================================================
 function DayColumn({ date, tasks, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
-  dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds }) {
+  dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList }) {
   const [input, setInput] = useState('');
   const today = isToday(date);
   const past = isPast(date);
   const submit = (e) => { e.preventDefault(); if (input.trim()) { onAdd(input.trim()); setInput(''); } };
   const dropping = dragState?.overDate === dateKey(date);
 
+  const containerClass = inList
+    ? 'flex flex-col px-2 py-1 rounded-md transition-colors w-full'
+    : 'flex flex-col min-h-[280px] px-2 py-1 rounded-md transition-colors min-w-[80vw] sm:min-w-[320px] md:min-w-0 snap-start flex-shrink-0 md:flex-shrink';
+
   return (
-    <div data-date={dateKey(date)}
-      className="flex flex-col min-h-[280px] px-2 py-1 rounded-md transition-colors min-w-[80vw] sm:min-w-[320px] md:min-w-0 snap-start flex-shrink-0 md:flex-shrink"
+    <div data-date={dateKey(date)} className={containerClass}
       style={{ background: dropping ? palette.accentSoft : 'transparent', opacity: past && !today ? 0.65 : 1 }}
       onDragOver={(e) => { e.preventDefault(); onDragOver(dateKey(date)); }}
       onDrop={(e) => { e.preventDefault(); onDrop(dateKey(date)); }}>
-      <div className="mb-4 pb-3" style={{ borderBottom: `1px solid ${today ? palette.accent : palette.border}` }}>
+      <div className="mb-3 pb-2" style={{ borderBottom: `1px solid ${today ? palette.accent : palette.border}` }}>
         <div className="flex items-baseline justify-between gap-2">
           <h2 style={{
             fontFamily: 'Fraunces, serif', fontSize: '1.55rem',
@@ -283,7 +285,6 @@ function BrainDump({ open, onClose, items, onAdd, onDelete, onPromote }) {
   const inputRef = useRef(null);
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 100); }, [open]);
   const submit = (e) => { e.preventDefault(); if (input.trim()) { onAdd(input.trim()); setInput(''); } };
-
   return (
     <>
       <div className="fixed inset-0 z-30 transition-opacity"
@@ -351,18 +352,15 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
   const [showRecover, setShowRecover] = useState(false);
   const lastActivity = useRef(Date.now());
   const saveDebounced = useRef(null);
-
   useEffect(() => {
     if (open && task) { setSeconds(0); setRunning(true); setNotes(task.notes || ''); lastActivity.current = Date.now(); }
     if (!open) setRunning(false);
   }, [open, task?.id]);
-
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => clearInterval(id);
   }, [running]);
-
   useEffect(() => {
     if (!open || !running) { setShowRecover(false); return; }
     const id = setInterval(() => { if (Date.now() - lastActivity.current > 90_000) setShowRecover(true); }, 5000);
@@ -371,13 +369,11 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
     window.addEventListener('keydown', reset);
     return () => { clearInterval(id); window.removeEventListener('mousemove', reset); window.removeEventListener('keydown', reset); };
   }, [open, running]);
-
   const handleNotesChange = (val) => {
     setNotes(val);
     clearTimeout(saveDebounced.current);
     saveDebounced.current = setTimeout(() => onUpdateNotes(val), 500);
   };
-
   if (!open || !task) return null;
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: palette.bg }}>
@@ -496,6 +492,22 @@ function DailyClosure({ open, onClose, todayTasks, stats }) {
 }
 
 // ============================================================
+//  ERROR BANNER
+// ============================================================
+function ErrorBanner({ error }) {
+  if (!error) return null;
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-4 py-2 rounded-lg"
+      style={{ background: palette.errBg, border: `1px solid ${palette.errInk}30`, maxWidth: '90vw', animation: 'fadein 0.3s ease' }}>
+      <AlertCircle size={14} style={{ color: palette.errInk, flexShrink: 0 }} />
+      <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8rem', color: palette.errInk }}>
+        <strong>{error.label}:</strong> {error.message}
+      </span>
+    </div>
+  );
+}
+
+// ============================================================
 //  MAIN APP
 // ============================================================
 export default function AlignApp() {
@@ -505,7 +517,15 @@ export default function AlignApp() {
   const [focusTask, setFocusTask] = useState(null);
   const [closureOpen, setClosureOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const weekGridRef = useRef(null);
+
+  // Set default viewMode based on screen size on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setViewMode('list');
+    }
+  }, []);
 
   const onDragTaskStart = (fromDate, taskId) => setDragState({ fromDate, taskId, overDate: null });
   const onDragTaskEnd = () => setDragState(null);
@@ -560,10 +580,16 @@ export default function AlignApp() {
 
   useEffect(() => {
     if (!s.loaded || !weekGridRef.current) return;
-    if (window.innerWidth >= 768) return;
     const todayCol = weekGridRef.current.querySelector(`[data-date="${todayKey}"]`);
-    if (todayCol) setTimeout(() => todayCol.scrollIntoView({ block: 'nearest', inline: 'start', behavior: 'smooth' }), 100);
-  }, [s.loaded, todayKey]);
+    if (!todayCol) return;
+    setTimeout(() => {
+      if (viewMode === 'grid' && window.innerWidth < 768) {
+        todayCol.scrollIntoView({ block: 'nearest', inline: 'start', behavior: 'smooth' });
+      } else if (viewMode === 'list') {
+        todayCol.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }, 100);
+  }, [s.loaded, todayKey, viewMode]);
 
   if (!s.loaded) {
     return (
@@ -587,6 +613,8 @@ export default function AlignApp() {
         .align-week-scroll { scrollbar-width: none; -ms-overflow-style: none; }
       `}</style>
 
+      <ErrorBanner error={s.error} />
+
       <FocusStrip todayTasks={todayTasks} stats={s.stats} suggestions={suggestions}
         onSelectFocus={(t) => setFocusTask({ dKey: todayKey, task: t })}
         currentFocus={focusTask?.task} />
@@ -605,6 +633,13 @@ export default function AlignApp() {
             }}>{fmtFullDate(today0())}</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <button onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+              className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
+              style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
+              title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}>
+              {viewMode === 'grid' ? <LayoutList size={14} /> : <LayoutGrid size={14} />}
+            </button>
             <button onClick={() => setBrainOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Brain dump (B)"><Brain size={14} /></button>
             <button onClick={() => setClosureOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
@@ -631,19 +666,37 @@ export default function AlignApp() {
           </div>
         </div>
 
-        <div ref={weekGridRef}
-          className="flex md:grid md:grid-cols-7 gap-x-4 gap-y-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 md:pb-0 align-week-scroll">
-          {days.map(d => (
-            <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
-              onAdd={(text) => s.addTask(dateKey(d), text)}
-              onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
-              onStart={s.startTask} onPause={s.pauseTask}
-              onFocus={(dKey, task) => setFocusTask({ dKey, task })}
-              dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
-              onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
-              topThreeIds={dateKey(d) === todayKey ? topThreeIds : []} />
-          ))}
-        </div>
+        {/* Week container: list view (vertical stack) or grid view */}
+        {viewMode === 'list' ? (
+          <div ref={weekGridRef} className="flex flex-col gap-8">
+            {days.map(d => (
+              <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
+                onAdd={(text) => s.addTask(dateKey(d), text)}
+                onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
+                onStart={s.startTask} onPause={s.pauseTask}
+                onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+                dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
+                onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
+                topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
+                inList={true} />
+            ))}
+          </div>
+        ) : (
+          <div ref={weekGridRef}
+            className="flex md:grid md:grid-cols-7 gap-x-4 gap-y-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 md:pb-0 align-week-scroll">
+            {days.map(d => (
+              <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
+                onAdd={(text) => s.addTask(dateKey(d), text)}
+                onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
+                onStart={s.startTask} onPause={s.pauseTask}
+                onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+                dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
+                onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
+                topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
+                inList={false} />
+            ))}
+          </div>
+        )}
 
         <footer className="mt-20 pt-6 text-center" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
           <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>Momentum, not pressure.</p>
