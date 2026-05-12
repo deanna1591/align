@@ -598,7 +598,7 @@ export default function AlignApp() {
       try {
         const start = dateKey(days[0]);
         const end = dateKey(days[6]);
-        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`);
+        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data.events) setEvents(data.events);
