@@ -598,7 +598,7 @@ export default function AlignApp() {
       try {
         const start = dateKey(days[0]);
         const end = dateKey(days[6]);
-        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`, { cache: 'no-store' });
+        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data.events) setEvents(data.events);
@@ -615,9 +615,14 @@ export default function AlignApp() {
   const eventsByDate = useMemo(() => {
     const out = {};
     for (const ev of events) {
-      // Pull date portion in local timezone
-      const d = new Date(ev.start);
-      const k = dateKey(d);
+      let k;
+      // All-day events come as 'YYYY-MM-DD' strings — use directly to avoid timezone shift
+      if (ev.allDay && typeof ev.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ev.start)) {
+        k = ev.start;
+      } else {
+        const d = new Date(ev.start);
+        k = dateKey(d);
+      }
       if (!out[k]) out[k] = [];
       out[k].push(ev);
     }
