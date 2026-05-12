@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Check, X, Plus, ChevronLeft, ChevronRight, Sparkles, Brain,
   Play, Pause, Flame, Sunrise, Minimize2, CircleDot, MoreHorizontal,
-  RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle, Settings,
+  RotateCcw, Target, Command, LogOut, LayoutList, ListTodo, LayoutGrid, AlertCircle, Settings,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 import SettingsDrawer from './SettingsDrawer';
