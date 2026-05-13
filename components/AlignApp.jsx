@@ -332,6 +332,7 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      style={{ touchAction: 'pan-y' }}
       {...dragHandlers}
     >
       {/* Swipe-left red delete background */}
