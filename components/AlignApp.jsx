@@ -430,7 +430,7 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
 // ============================================================
 function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
   dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList, onOpenActionMenu,
-  lists, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList }) {
+  lists, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList, hideDateHeader }) {
   const [input, setInput] = useState('');
   const today = isToday(date);
   const past = isPast(date);
@@ -446,22 +446,24 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
       style={{ background: dropping ? palette.accentSoft : 'transparent', opacity: past && !today ? 0.65 : 1 }}
       onDragOver={(e) => { e.preventDefault(); onDragOver(dateKey(date)); }}
       onDrop={(e) => { e.preventDefault(); onDrop(dateKey(date)); }}>
-      <div className="mb-3 pb-2" style={{ borderBottom: `1px solid ${today ? palette.accent : palette.border}` }}>
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 style={{
-            fontFamily: 'Fraunces, serif', fontSize: '1.55rem',
-            fontWeight: today ? 500 : 400,
-            fontVariationSettings: today ? "'SOFT' 100, 'opsz' 144" : "'SOFT' 50, 'opsz' 144",
-            color: today ? palette.accent : palette.ink,
-            letterSpacing: '-0.02em', lineHeight: 1,
-          }}>{fmtDay(date)}</h2>
-          <span style={{
-            fontFamily: 'Inter Tight, sans-serif', fontSize: '0.65rem', fontWeight: 600,
-            letterSpacing: '0.12em', textTransform: 'uppercase',
-            color: today ? palette.accent : palette.ink3,
-          }}>{fmtDate(date)}</span>
+      {!hideDateHeader && (
+        <div className="mb-3 pb-2" style={{ borderBottom: `1px solid ${today ? palette.accent : palette.border}` }}>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 style={{
+              fontFamily: 'Fraunces, serif', fontSize: '1.55rem',
+              fontWeight: today ? 500 : 400,
+              fontVariationSettings: today ? "'SOFT' 100, 'opsz' 144" : "'SOFT' 50, 'opsz' 144",
+              color: today ? palette.accent : palette.ink,
+              letterSpacing: '-0.02em', lineHeight: 1,
+            }}>{fmtDay(date)}</h2>
+            <span style={{
+              fontFamily: 'Inter Tight, sans-serif', fontSize: '0.65rem', fontWeight: 600,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: today ? palette.accent : palette.ink3,
+            }}>{fmtDate(date)}</span>
+          </div>
         </div>
-      </div>
+      )}
       <div className="flex-1 space-y-0.5 pl-2">
         {events && events.length > 0 && (
           <div className="mb-2 space-y-1">
@@ -875,12 +877,17 @@ export default function AlignApp() {
   const [mobileTab, setMobileTab] = useState('week'); // 'week' | 'lists'
   const weekGridRef = useRef(null);
 
-  // Helper: move a task to N days from today
+  // Helper: move a task N days from today
   const moveTaskToOffset = (fromDate, taskId, daysFromToday) => {
     const t = new Date(today0());
     t.setDate(t.getDate() + daysFromToday);
     const toKey = dateKey(t);
     s.moveTaskBetweenDays(fromDate, toKey, taskId);
+  };
+
+  // Helper: move task to Someday (date = null)
+  const moveTaskToSomeday = (fromDate, taskId) => {
+    s.moveTaskBetweenDays(fromDate, 'someday', taskId);
   };
 
   // Set default viewMode based on screen size on mount
@@ -1134,7 +1141,7 @@ export default function AlignApp() {
                 onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
                 lists={s.lists}
                 onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
-                onMoveToSomeday={(task, dKey) => moveTaskToOffset(dKey, task.id, 30)}
+                onMoveToSomeday={(task, dKey) => moveTaskToSomeday(dKey, task.id)}
                 onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
                 onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
@@ -1157,7 +1164,7 @@ export default function AlignApp() {
                 onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
                 lists={s.lists}
                 onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
-                onMoveToSomeday={(task, dKey) => moveTaskToOffset(dKey, task.id, 30)}
+                onMoveToSomeday={(task, dKey) => moveTaskToSomeday(dKey, task.id)}
                 onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
                 onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
@@ -1167,6 +1174,59 @@ export default function AlignApp() {
             ))}
           </div>
         )}
+        </div>
+
+        {/* Someday: tasks with no date — appears between the week grid and Lists */}
+        <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
+          {(s.tasks['someday'] || []).length > 0 || true ? (
+            <div className="mt-10 pt-6" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
+              <div className="flex items-center gap-3 mb-4">
+                <Sunrise size={14} style={{ color: palette.accent }} />
+                <h2 style={{
+                  fontFamily: 'Fraunces, serif',
+                  fontWeight: 400,
+                  fontSize: '1.4rem',
+                  letterSpacing: '-0.01em',
+                  color: palette.ink,
+                }}>Someday</h2>
+                <span style={{
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.7rem',
+                  color: palette.ink3,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}>
+                  {(s.tasks['someday'] || []).filter(t => !t.completed).length}
+                </span>
+              </div>
+              <div className="max-w-[640px]">
+                <DayColumn
+                  date={new Date(0)} // placeholder date (not used since we override inList)
+                  tasks={s.tasks['someday'] || []}
+                  events={[]}
+                  onAdd={(text) => {
+                    // Add a new task directly to Someday by bypassing dateKey
+                    // We use s.moveTaskBetweenDays after creation, but simpler: just call addTask with 'someday'
+                    s.addTask('someday', text);
+                  }}
+                  onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
+                  onStart={s.startTask} onPause={s.pauseTask}
+                  onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+                  onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
+                  lists={s.lists}
+                  onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
+                  onMoveToSomeday={(task, dKey) => moveTaskToSomeday(dKey, task.id)}
+                  onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
+                  onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
+                  dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
+                  onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
+                  topThreeIds={[]}
+                  inList={true}
+                  hideDateHeader={true}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Lists section: always visible on desktop, only when Lists tab on mobile */}
@@ -1206,7 +1266,7 @@ export default function AlignApp() {
           onClose={() => setActionMenuTask(null)}
           onComplete={() => { s.toggleTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
           onMoveToTomorrow={() => { moveTaskToOffset(actionMenuTask.dKey, actionMenuTask.task.id, 1); setActionMenuTask(null); }}
-          onMoveToSomeday={() => { moveTaskToOffset(actionMenuTask.dKey, actionMenuTask.task.id, 30); setActionMenuTask(null); }}
+          onMoveToSomeday={() => { moveTaskToSomeday(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
           onMoveToDate={(d) => { s.moveTaskBetweenDays(actionMenuTask.dKey, d, actionMenuTask.task.id); setActionMenuTask(null); }}
           onMoveToList={(listId) => { s.moveTaskToList(actionMenuTask.dKey, actionMenuTask.task.id, listId); setActionMenuTask(null); }}
           onDelete={() => { s.deleteTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
