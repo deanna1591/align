@@ -75,33 +75,33 @@ function TaskMenu({ task, lists, onDelete, onFocus, onClose, onMoveToTomorrow, o
       style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, boxShadow: '0 8px 24px rgba(27,24,19,0.08)', minWidth: 200 }}>
       {!listsSubmenuOpen && !datePickerOpen && (
         <>
-          <button onClick={onFocus} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors hover:bg-black/[0.03]"
-            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onFocus(); }} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
             <Target size={12} /> Enter focus lane
           </button>
           <div className="h-px" style={{ background: palette.borderSoft }} />
-          <button onClick={onMoveToTomorrow} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
-            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onMoveToTomorrow(); }} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
             <ChevronRight size={12} /> Move to tomorrow
           </button>
-          <button onClick={onMoveToSomeday} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
-            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onMoveToSomeday(); }} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
             <Sunrise size={12} /> Move to someday
           </button>
-          <button onClick={() => setDatePickerOpen(true)} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
-            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setDatePickerOpen(true); }} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
             <CalendarDays size={12} /> Pick a date…
           </button>
           {lists && lists.length > 0 && (
-            <button onClick={() => setListsSubmenuOpen(true)} className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-black/[0.03]"
-              style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setListsSubmenuOpen(true); }} className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-black/[0.03]"
+              style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
               <span className="flex items-center gap-2"><ListTodo size={12} /> Move to list…</span>
               <ChevronRight size={11} style={{ color: palette.ink3 }} />
             </button>
           )}
           <div className="h-px" style={{ background: palette.borderSoft }} />
-          <button onClick={onDelete} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
-            style={{ color: '#a8493a', fontFamily: 'Inter Tight, sans-serif' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: '#a8493a', fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
             <X size={12} /> Delete
           </button>
         </>
@@ -109,14 +109,14 @@ function TaskMenu({ task, lists, onDelete, onFocus, onClose, onMoveToTomorrow, o
 
       {listsSubmenuOpen && (
         <>
-          <button onClick={() => setListsSubmenuOpen(false)} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
-            style={{ color: palette.ink3, fontFamily: 'Inter Tight, sans-serif' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setListsSubmenuOpen(false); }} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink3, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
             <ChevronLeft size={11} /> Back
           </button>
           <div className="h-px" style={{ background: palette.borderSoft }} />
           {lists.map(l => (
-            <button key={l.id} onClick={() => onMoveToList(l.id)} className="w-full text-left px-3 py-2 text-xs hover:bg-black/[0.03]"
-              style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+            <button type="button" key={l.id} onClick={(e) => { e.stopPropagation(); onMoveToList(l.id); }} className="w-full text-left px-3 py-2 text-xs hover:bg-black/[0.03]"
+              style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif', cursor: 'pointer' }}>
               {l.title}
             </button>
           ))}
@@ -125,15 +125,15 @@ function TaskMenu({ task, lists, onDelete, onFocus, onClose, onMoveToTomorrow, o
 
       {datePickerOpen && (
         <div className="p-3">
-          <button onClick={() => setDatePickerOpen(false)} className="text-xs flex items-center gap-1 mb-2 hover:opacity-70"
-            style={{ color: palette.ink3, fontFamily: 'Inter Tight, sans-serif', background: 'transparent', border: 'none' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setDatePickerOpen(false); }} className="text-xs flex items-center gap-1 mb-2 hover:opacity-70"
+            style={{ color: palette.ink3, fontFamily: 'Inter Tight, sans-serif', background: 'transparent', border: 'none', cursor: 'pointer' }}>
             <ChevronLeft size={11} /> Back
           </button>
           <input type="date" value={pickedDate} onChange={(e) => setPickedDate(e.target.value)} autoFocus
             className="w-full px-2 py-1.5 rounded text-xs outline-none"
             style={{ background: 'white', border: `1px solid ${palette.border}`, fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
-          <button onClick={submitPickedDate} disabled={!pickedDate} className="w-full mt-2 py-1.5 rounded text-xs disabled:opacity-40"
-            style={{ background: palette.accent, color: 'white', fontFamily: 'Inter Tight, sans-serif', border: 'none' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); submitPickedDate(); }} disabled={!pickedDate} className="w-full mt-2 py-1.5 rounded text-xs disabled:opacity-40"
+            style={{ background: palette.accent, color: 'white', fontFamily: 'Inter Tight, sans-serif', border: 'none', cursor: pickedDate ? 'pointer' : 'not-allowed' }}>
             Move
           </button>
         </div>
