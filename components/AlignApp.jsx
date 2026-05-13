@@ -1058,6 +1058,11 @@ export default function AlignApp() {
         />
       )}
 
+      <button onClick={() => setBrainOpen(true)}
+        className="fixed bottom-[88px] right-[20px] md:bottom-[80px] md:right-[26px] w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
+        style={{ background: '#FAFAFA', border: `1px solid ${palette.border}`, color: palette.ink2, boxShadow: '0 2px 8px rgba(27, 24, 19, 0.08)', zIndex: 30 }}
+        title="Brain dump list (B)"><ListTodo size={14} /></button>
+
       <button onClick={() => setQuickOpen(true)}
         className="fixed bottom-5 right-5 md:bottom-6 md:right-6 w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
         style={{ background: palette.accent, color: 'white', boxShadow: '0 4px 20px rgba(124,164,129,0.40)', zIndex: 30 }}
