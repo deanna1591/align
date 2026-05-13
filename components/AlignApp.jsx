@@ -4,11 +4,13 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Check, X, Plus, ChevronLeft, ChevronRight, Sparkles, Brain,
   Play, Pause, Flame, Sunrise, Minimize2, CircleDot, MoreHorizontal,
-  RotateCcw, Target, Command, LogOut, LayoutList, ListTodo, LayoutGrid, AlertCircle, Settings,
+  RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle, Settings,
+  CalendarDays, ListTodo,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
+import Lists from './Lists';
 
 // ============================================================
 //  HELPERS
@@ -76,9 +78,138 @@ function TaskMenu({ onDelete, onFocus, onClose }) {
 }
 
 // ============================================================
+//  TASK ACTION MENU (mobile bottom sheet)
+// ============================================================
+function TaskActionMenu({ task, currentDate, onClose, onMoveToTomorrow, onMoveToSomeday, onMoveToDate, onComplete, onDelete }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ background: 'rgba(27,24,19,0.4)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-4 sm:p-6"
+        style={{ background: 'white', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 pb-3" style={{ borderBottom: `1px solid ${palette.borderSoft}` }}>
+          <p style={{
+            fontFamily: 'Inter Tight, sans-serif',
+            fontSize: '0.7rem',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: palette.ink3,
+            marginBottom: 6,
+          }}>Task</p>
+          <p style={{
+            fontFamily: 'Inter Tight, sans-serif',
+            fontSize: '0.95rem',
+            color: palette.ink,
+            lineHeight: 1.3,
+          }}>{task.text}</p>
+        </div>
+
+        {!pickerOpen ? (
+          <div className="space-y-1">
+            {!task.completed && (
+              <button
+                onClick={onComplete}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
+              >
+                <Check size={16} style={{ color: palette.accent }} />
+                Mark complete
+              </button>
+            )}
+            <button
+              onClick={onMoveToTomorrow}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
+            >
+              <ChevronRight size={16} style={{ color: palette.ink2 }} />
+              Move to tomorrow
+            </button>
+            <button
+              onClick={onMoveToSomeday}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
+            >
+              <Sunrise size={16} style={{ color: palette.ink2 }} />
+              Move to someday
+            </button>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
+            >
+              <CalendarDays size={16} style={{ color: palette.ink2 }} />
+              Pick a date…
+            </button>
+            <div className="h-px my-2" style={{ background: palette.borderSoft }} />
+            <button
+              onClick={onDelete}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: '#a8493a', textAlign: 'left' }}
+            >
+              <X size={16} />
+              Delete task
+            </button>
+          </div>
+        ) : (
+          <div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              autoFocus
+              className="w-full px-3 py-3 rounded-lg outline-none"
+              style={{
+                fontFamily: 'Inter Tight, sans-serif',
+                fontSize: '0.95rem',
+                background: palette.bgRaised,
+                border: `1px solid ${palette.border}`,
+                color: palette.ink,
+              }}
+            />
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setPickerOpen(false)}
+                className="flex-1 py-3 rounded-lg"
+                style={{
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.85rem',
+                  background: 'transparent',
+                  color: palette.ink2,
+                  border: `1px solid ${palette.border}`,
+                }}
+              >Back</button>
+              <button
+                disabled={!selectedDate || selectedDate === currentDate}
+                onClick={() => onMoveToDate(selectedDate)}
+                className="flex-1 py-3 rounded-lg disabled:opacity-40"
+                style={{
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.85rem',
+                  background: palette.accent,
+                  color: 'white',
+                  border: 'none',
+                }}
+              >Move</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 //  TASK ROW
 // ============================================================
-function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, highlighted, dragHandlers }) {
+function TaskRow({ task, dKey, onToggle, onEdit, onDelete, onStart, onPause, onFocus, onOpenActionMenu, highlighted, dragHandlers }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(task.text);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -87,6 +218,14 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
     if (value.trim() && value !== task.text) onEdit(task.id, value.trim());
     if (!value.trim()) setValue(task.text);
     setEditing(false);
+  };
+  const handleBodyClick = () => {
+    if (task.completed) return;
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      onOpenActionMenu && onOpenActionMenu(task, dKey);
+    } else {
+      setEditing(true);
+    }
   };
   return (
     <div className="group relative flex items-start gap-2 py-1" draggable={!editing} {...dragHandlers}>
@@ -107,7 +246,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
           className="flex-1 bg-transparent outline-none text-[14px] leading-snug"
           style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
       ) : (
-        <div onClick={() => !task.completed && setEditing(true)}
+        <div onClick={handleBodyClick}
           className="flex-1 text-[14px] leading-snug cursor-text break-words select-none"
           style={{
             fontFamily: 'Inter Tight, sans-serif',
@@ -152,7 +291,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onStart, onPause, onFocus, 
 //  DAY COLUMN
 // ============================================================
 function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
-  dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList }) {
+  dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList, onOpenActionMenu }) {
   const [input, setInput] = useState('');
   const today = isToday(date);
   const past = isPast(date);
@@ -161,7 +300,7 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
 
   const containerClass = inList
     ? 'flex flex-col px-2 py-1 rounded-md transition-colors w-full'
-    : 'flex flex-col min-h-[280px] px-2 py-1 rounded-md transition-colors min-w-[80vw] sm:min-w-[320px] md:min-w-0 snap-start flex-shrink-0 md:flex-shrink';
+    : 'flex flex-col min-h-[280px] px-2 py-1 rounded-md transition-colors snap-start';
 
   return (
     <div data-date={dateKey(date)} className={containerClass}
@@ -233,13 +372,14 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
           </div>
         )}
         {tasks.map((task) => (
-          <TaskRow key={task.id} task={task}
+          <TaskRow key={task.id} task={task} dKey={dateKey(date)}
             onToggle={() => onToggle(dateKey(date), task.id)}
             onEdit={(id, text) => onEdit(dateKey(date), id, text)}
             onDelete={() => onDelete(dateKey(date), task.id)}
             onStart={() => onStart(dateKey(date), task.id)}
             onPause={() => onPause(dateKey(date), task.id)}
             onFocus={(t) => onFocus(dateKey(date), t)}
+            onOpenActionMenu={onOpenActionMenu}
             highlighted={today && topThreeIds.includes(task.id)}
             dragHandlers={{
               onDragStart: (e) => { e.dataTransfer.effectAllowed = 'move'; onDragTaskStart(dateKey(date), task.id); },
@@ -273,8 +413,26 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
   return (
     <div className="sticky top-0 z-20 backdrop-blur-md"
       style={{ background: 'rgba(255,255,255,0.85)', borderBottom: `1px solid ${palette.borderSoft}` }}>
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 md:py-3">
+        {/* MOBILE: single compact row with progress · streak */}
+        <div className="flex md:hidden items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Target size={11} style={{ color: palette.accent }} className="flex-shrink-0" />
+            <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink2, fontWeight: 500 }}>
+              {completedToday}<span style={{ color: palette.ink3 }}>/{totalToday || '—'}</span>
+            </span>
+            <div className="w-12 h-1 rounded-full overflow-hidden flex-shrink-0" style={{ background: palette.borderSoft }}>
+              <div className="h-full transition-all duration-500" style={{ width: `${pct}%`, background: palette.accent }} />
+            </div>
+            <span className="ml-1 flex items-center gap-1 flex-shrink-0" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink2, fontWeight: 500 }}>
+              <Flame size={11} style={{ color: stats.streak > 0 ? palette.warm : palette.ink3 }} />
+              {stats.streak}
+            </span>
+          </div>
+        </div>
+
+        {/* DESKTOP: full original layout */}
+        <div className="hidden md:flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               <Target size={11} style={{ color: palette.accent }} />
@@ -316,7 +474,7 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
           </div>
         </div>
         {suggestions && suggestions.length > 0 && (
-          <div className="mt-2 pt-2 flex items-center gap-2" style={{ borderTop: `1px dashed ${palette.borderSoft}` }}>
+          <div className="hidden md:flex mt-2 pt-2 items-center gap-2" style={{ borderTop: `1px dashed ${palette.borderSoft}` }}>
             <Sparkles size={10} style={{ color: palette.accent }} />
             <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.72rem', color: palette.ink2, fontStyle: 'italic' }}>{suggestions[0]}</span>
           </div>
@@ -570,7 +728,17 @@ export default function AlignApp() {
   const [dragState, setDragState] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [events, setEvents] = useState([]);
+  const [actionMenuTask, setActionMenuTask] = useState(null); // { task, dKey }
+  const [mobileTab, setMobileTab] = useState('week'); // 'week' | 'lists'
   const weekGridRef = useRef(null);
+
+  // Helper: move a task to N days from today
+  const moveTaskToOffset = (fromDate, taskId, daysFromToday) => {
+    const t = new Date(today0());
+    t.setDate(t.getDate() + daysFromToday);
+    const toKey = dateKey(t);
+    s.moveTaskBetweenDays(fromDate, toKey, taskId);
+  };
 
   // Set default viewMode based on screen size on mount
   useEffect(() => {
@@ -671,7 +839,11 @@ export default function AlignApp() {
       const tag = (e.target.tagName || '').toLowerCase();
       const isTyping = tag === 'input' || tag === 'textarea';
       if (e.key === 'b' && !isTyping) { e.preventDefault(); setBrainOpen(v => !v); }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setQuickOpen(v => !v); }
+      // Cmd/Ctrl + K opens quick capture from anywhere
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setQuickOpen(v => !v);
+      }
       if (e.key === 'Escape') { setBrainOpen(false); setFocusTask(null); setClosureOpen(false); setSettingsOpen(false); setQuickOpen(false); }
     };
     window.addEventListener('keydown', handler);
@@ -728,7 +900,7 @@ export default function AlignApp() {
         onSelectFocus={(t) => setFocusTask({ dKey: todayKey, task: t })}
         currentFocus={focusTask?.task} />
 
-      <div className="max-w-[1800px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
         <header className="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-3 md:gap-4">
           <div className="flex items-baseline gap-4">
             <h1 style={{
@@ -773,11 +945,40 @@ export default function AlignApp() {
               style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink2, fontWeight: 500 }}>This week</button>
           </div>
           <div className="hidden md:flex items-center gap-2" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3 }}>
-            <Command size={11} /> B brain · Esc close
+            <Command size={11} /> ⌘K capture · B brain · Esc close
           </div>
         </div>
 
-        {/* Week container: list view (vertical stack) or grid view */}
+        {/* Mobile tab toggle: Week / Lists */}
+        <div className="md:hidden mb-4 flex items-center gap-1 p-1 rounded-lg" style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, width: 'fit-content' }}>
+          <button onClick={() => setMobileTab('week')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors"
+            style={{
+              background: mobileTab === 'week' ? 'white' : 'transparent',
+              boxShadow: mobileTab === 'week' ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
+              fontFamily: 'Inter Tight, sans-serif',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              color: mobileTab === 'week' ? palette.ink : palette.ink2,
+            }}>
+            <CalendarDays size={12} /> Week
+          </button>
+          <button onClick={() => setMobileTab('lists')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors"
+            style={{
+              background: mobileTab === 'lists' ? 'white' : 'transparent',
+              boxShadow: mobileTab === 'lists' ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
+              fontFamily: 'Inter Tight, sans-serif',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              color: mobileTab === 'lists' ? palette.ink : palette.ink2,
+            }}>
+            <ListTodo size={12} /> Lists
+          </button>
+        </div>
+
+        {/* Week container: hide on mobile when Lists tab is active */}
+        <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
         {viewMode === 'list' ? (
           <div ref={weekGridRef} className="flex flex-col gap-8">
             {days.map(d => (
@@ -787,6 +988,7 @@ export default function AlignApp() {
                 onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
                 onStart={s.startTask} onPause={s.pauseTask}
                 onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+                onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
                 onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                 topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
@@ -795,7 +997,8 @@ export default function AlignApp() {
           </div>
         ) : (
           <div ref={weekGridRef}
-            className="flex md:grid md:grid-cols-7 gap-x-4 gap-y-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 md:pb-0 align-week-scroll">
+            className="grid grid-flow-col gap-x-4 gap-y-8 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 align-week-scroll"
+            style={{ gridAutoColumns: 'minmax(200px, 1fr)' }}>
             {days.map(d => (
               <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
                 events={eventsByDate[dateKey(d)] || []}
@@ -803,6 +1006,7 @@ export default function AlignApp() {
                 onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
                 onStart={s.startTask} onPause={s.pauseTask}
                 onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+                onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
                 onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                 topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
@@ -810,6 +1014,21 @@ export default function AlignApp() {
             ))}
           </div>
         )}
+        </div>
+
+        {/* Lists section: always visible on desktop, only when Lists tab on mobile */}
+        <div className={mobileTab === 'week' ? 'hidden md:block' : ''}>
+          <Lists
+            lists={s.lists}
+            listItems={s.listItems}
+            onCreateList={s.createList}
+            onDeleteList={s.deleteList}
+            onAddItem={s.addListItem}
+            onToggleItem={s.toggleListItem}
+            onEditItem={s.editListItem}
+            onDeleteItem={s.deleteListItem}
+          />
+        </div>
 
         <footer className="mt-20 pt-6 text-center" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
           <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>Momentum, not pressure.</p>
@@ -826,17 +1045,23 @@ export default function AlignApp() {
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} />
       <QuickCaptureDrawer open={quickOpen} onClose={() => setQuickOpen(false)} onCapture={s.addBrain} />
 
-      {/* Floating action buttons */}
-      <div className="fixed bottom-5 right-5 md:bottom-6 md:right-6 flex flex-col items-end gap-2" style={{ zIndex: 30 }}>
-        <button onClick={() => setBrainOpen(true)}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
-          style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, color: palette.ink2, boxShadow: '0 2px 8px rgba(27,24,19,0.05)' }}
-          title="Brain dump list (B)"><ListTodo size={14} /></button>
-        <button onClick={() => setQuickOpen(true)}
-          className="w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
-          style={{ background: palette.accent, color: 'white', boxShadow: '0 4px 20px rgba(124,164,129,0.40)' }}
-          title="Quick capture (⌘K)"><Brain size={18} /></button>
-      </div>
+      {actionMenuTask && (
+        <TaskActionMenu
+          task={actionMenuTask.task}
+          currentDate={actionMenuTask.dKey}
+          onClose={() => setActionMenuTask(null)}
+          onComplete={() => { s.toggleTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
+          onMoveToTomorrow={() => { moveTaskToOffset(actionMenuTask.dKey, actionMenuTask.task.id, 1); setActionMenuTask(null); }}
+          onMoveToSomeday={() => { moveTaskToOffset(actionMenuTask.dKey, actionMenuTask.task.id, 30); setActionMenuTask(null); }}
+          onMoveToDate={(d) => { s.moveTaskBetweenDays(actionMenuTask.dKey, d, actionMenuTask.task.id); setActionMenuTask(null); }}
+          onDelete={() => { s.deleteTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
+        />
+      )}
+
+      <button onClick={() => setQuickOpen(true)}
+        className="fixed bottom-5 right-5 md:bottom-6 md:right-6 w-14 h-14 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105"
+        style={{ background: palette.accent, color: 'white', boxShadow: '0 4px 20px rgba(124,164,129,0.40)', zIndex: 30 }}
+        title="Quick capture (⌘K)"><Brain size={18} /></button>
     </div>
   );
 }
