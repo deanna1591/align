@@ -54,25 +54,90 @@ const palette = {
 // ============================================================
 //  TASK MENU
 // ============================================================
-function TaskMenu({ onDelete, onFocus, onClose }) {
+function TaskMenu({ task, lists, onDelete, onFocus, onClose, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList }) {
   const ref = useRef(null);
+  const [listsSubmenuOpen, setListsSubmenuOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [pickedDate, setPickedDate] = useState('');
+
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     setTimeout(() => document.addEventListener('mousedown', handler), 0);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
+
+  const submitPickedDate = () => {
+    if (pickedDate) onPickDate(pickedDate);
+  };
+
   return (
     <div ref={ref} className="absolute right-0 top-6 z-30 rounded-lg overflow-hidden"
-      style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, boxShadow: '0 8px 24px rgba(27,24,19,0.08)', minWidth: 170 }}>
-      <button onClick={onFocus} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors hover:bg-black/[0.03]"
-        style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
-        <Target size={12} /> Enter focus lane
-      </button>
-      <div className="h-px" style={{ background: palette.borderSoft }} />
-      <button onClick={onDelete} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
-        style={{ color: '#a8493a', fontFamily: 'Inter Tight, sans-serif' }}>
-        <X size={12} /> Delete
-      </button>
+      style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, boxShadow: '0 8px 24px rgba(27,24,19,0.08)', minWidth: 200 }}>
+      {!listsSubmenuOpen && !datePickerOpen && (
+        <>
+          <button onClick={onFocus} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+            <Target size={12} /> Enter focus lane
+          </button>
+          <div className="h-px" style={{ background: palette.borderSoft }} />
+          <button onClick={onMoveToTomorrow} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+            <ChevronRight size={12} /> Move to tomorrow
+          </button>
+          <button onClick={onMoveToSomeday} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+            <Sunrise size={12} /> Move to someday
+          </button>
+          <button onClick={() => setDatePickerOpen(true)} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+            <CalendarDays size={12} /> Pick a date…
+          </button>
+          {lists && lists.length > 0 && (
+            <button onClick={() => setListsSubmenuOpen(true)} className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-black/[0.03]"
+              style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+              <span className="flex items-center gap-2"><ListTodo size={12} /> Move to list…</span>
+              <ChevronRight size={11} style={{ color: palette.ink3 }} />
+            </button>
+          )}
+          <div className="h-px" style={{ background: palette.borderSoft }} />
+          <button onClick={onDelete} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: '#a8493a', fontFamily: 'Inter Tight, sans-serif' }}>
+            <X size={12} /> Delete
+          </button>
+        </>
+      )}
+
+      {listsSubmenuOpen && (
+        <>
+          <button onClick={() => setListsSubmenuOpen(false)} className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-black/[0.03]"
+            style={{ color: palette.ink3, fontFamily: 'Inter Tight, sans-serif' }}>
+            <ChevronLeft size={11} /> Back
+          </button>
+          <div className="h-px" style={{ background: palette.borderSoft }} />
+          {lists.map(l => (
+            <button key={l.id} onClick={() => onMoveToList(l.id)} className="w-full text-left px-3 py-2 text-xs hover:bg-black/[0.03]"
+              style={{ color: palette.ink, fontFamily: 'Inter Tight, sans-serif' }}>
+              {l.title}
+            </button>
+          ))}
+        </>
+      )}
+
+      {datePickerOpen && (
+        <div className="p-3">
+          <button onClick={() => setDatePickerOpen(false)} className="text-xs flex items-center gap-1 mb-2 hover:opacity-70"
+            style={{ color: palette.ink3, fontFamily: 'Inter Tight, sans-serif', background: 'transparent', border: 'none' }}>
+            <ChevronLeft size={11} /> Back
+          </button>
+          <input type="date" value={pickedDate} onChange={(e) => setPickedDate(e.target.value)} autoFocus
+            className="w-full px-2 py-1.5 rounded text-xs outline-none"
+            style={{ background: 'white', border: `1px solid ${palette.border}`, fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
+          <button onClick={submitPickedDate} disabled={!pickedDate} className="w-full mt-2 py-1.5 rounded text-xs disabled:opacity-40"
+            style={{ background: palette.accent, color: 'white', fontFamily: 'Inter Tight, sans-serif', border: 'none' }}>
+            Move
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -80,8 +145,9 @@ function TaskMenu({ onDelete, onFocus, onClose }) {
 // ============================================================
 //  TASK ACTION MENU (mobile bottom sheet)
 // ============================================================
-function TaskActionMenu({ task, currentDate, onClose, onMoveToTomorrow, onMoveToSomeday, onMoveToDate, onComplete, onDelete }) {
+function TaskActionMenu({ task, currentDate, lists, onClose, onMoveToTomorrow, onMoveToSomeday, onMoveToDate, onMoveToList, onComplete, onDelete }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
 
   return (
@@ -112,93 +178,87 @@ function TaskActionMenu({ task, currentDate, onClose, onMoveToTomorrow, onMoveTo
           }}>{task.text}</p>
         </div>
 
-        {!pickerOpen ? (
+        {!pickerOpen && !listsOpen && (
           <div className="space-y-1">
             {!task.completed && (
-              <button
-                onClick={onComplete}
+              <button onClick={onComplete}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
-                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
-              >
+                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}>
                 <Check size={16} style={{ color: palette.accent }} />
                 Mark complete
               </button>
             )}
-            <button
-              onClick={onMoveToTomorrow}
+            <button onClick={onMoveToTomorrow}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
-              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
-            >
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}>
               <ChevronRight size={16} style={{ color: palette.ink2 }} />
               Move to tomorrow
             </button>
-            <button
-              onClick={onMoveToSomeday}
+            <button onClick={onMoveToSomeday}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
-              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
-            >
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}>
               <Sunrise size={16} style={{ color: palette.ink2 }} />
               Move to someday
             </button>
-            <button
-              onClick={() => setPickerOpen(true)}
+            <button onClick={() => setPickerOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
-              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}
-            >
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}>
               <CalendarDays size={16} style={{ color: palette.ink2 }} />
               Pick a date…
             </button>
+            {lists && lists.length > 0 && (
+              <button onClick={() => setListsOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}>
+                <ListTodo size={16} style={{ color: palette.ink2 }} />
+                Move to list…
+              </button>
+            )}
             <div className="h-px my-2" style={{ background: palette.borderSoft }} />
-            <button
-              onClick={onDelete}
+            <button onClick={onDelete}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
-              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: '#a8493a', textAlign: 'left' }}
-            >
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: '#a8493a', textAlign: 'left' }}>
               <X size={16} />
               Delete task
             </button>
           </div>
-        ) : (
+        )}
+
+        {pickerOpen && (
           <div>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              autoFocus
+            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} autoFocus
               className="w-full px-3 py-3 rounded-lg outline-none"
-              style={{
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.95rem',
-                background: palette.bgRaised,
-                border: `1px solid ${palette.border}`,
-                color: palette.ink,
-              }}
-            />
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.95rem', background: palette.bgRaised, border: `1px solid ${palette.border}`, color: palette.ink }} />
             <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setPickerOpen(false)}
-                className="flex-1 py-3 rounded-lg"
-                style={{
-                  fontFamily: 'Inter Tight, sans-serif',
-                  fontSize: '0.85rem',
-                  background: 'transparent',
-                  color: palette.ink2,
-                  border: `1px solid ${palette.border}`,
-                }}
-              >Back</button>
-              <button
-                disabled={!selectedDate || selectedDate === currentDate}
+              <button onClick={() => setPickerOpen(false)} className="flex-1 py-3 rounded-lg"
+                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', background: 'transparent', color: palette.ink2, border: `1px solid ${palette.border}` }}>
+                Back
+              </button>
+              <button disabled={!selectedDate || selectedDate === currentDate}
                 onClick={() => onMoveToDate(selectedDate)}
                 className="flex-1 py-3 rounded-lg disabled:opacity-40"
-                style={{
-                  fontFamily: 'Inter Tight, sans-serif',
-                  fontSize: '0.85rem',
-                  background: palette.accent,
-                  color: 'white',
-                  border: 'none',
-                }}
-              >Move</button>
+                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', background: palette.accent, color: 'white', border: 'none' }}>
+                Move
+              </button>
             </div>
+          </div>
+        )}
+
+        {listsOpen && (
+          <div className="space-y-1">
+            <button onClick={() => setListsOpen(false)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-black/[0.03]"
+              style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8rem', color: palette.ink3, textAlign: 'left' }}>
+              <ChevronLeft size={14} /> Back
+            </button>
+            <div className="h-px my-1" style={{ background: palette.borderSoft }} />
+            {lists.map(l => (
+              <button key={l.id} onClick={() => onMoveToList(l.id)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/[0.03]"
+                style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.9rem', color: palette.ink, textAlign: 'left' }}>
+                {l.title}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -209,78 +269,155 @@ function TaskActionMenu({ task, currentDate, onClose, onMoveToTomorrow, onMoveTo
 // ============================================================
 //  TASK ROW
 // ============================================================
-function TaskRow({ task, dKey, onToggle, onEdit, onDelete, onStart, onPause, onFocus, onOpenActionMenu, highlighted, dragHandlers }) {
+function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPause, onFocus, onOpenActionMenu, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList, highlighted, dragHandlers }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(task.text);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const swipeStart = useRef(null);
   const inMotion = task.started && !task.completed;
+
   const saveEdit = () => {
     if (value.trim() && value !== task.text) onEdit(task.id, value.trim());
     if (!value.trim()) setValue(task.text);
     setEditing(false);
   };
+
   const handleBodyClick = () => {
     if (task.completed) return;
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      onOpenActionMenu && onOpenActionMenu(task, dKey);
-    } else {
-      setEditing(true);
+    if (swipeX !== 0 || showDeleteConfirm) {
+      // Reset swipe state first; don't trigger edit
+      setSwipeX(0);
+      setShowDeleteConfirm(false);
+      return;
     }
+    setEditing(true);
   };
+
+  // Touch swipe handlers (mobile only)
+  const onTouchStart = (e) => {
+    if (editing || task.completed) return;
+    swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const onTouchMove = (e) => {
+    if (!swipeStart.current || editing) return;
+    const dx = e.touches[0].clientX - swipeStart.current.x;
+    const dy = e.touches[0].clientY - swipeStart.current.y;
+    // Only horizontal swipes (ignore vertical scrolling)
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    e.preventDefault();
+    setSwipeX(Math.max(-120, Math.min(120, dx)));
+  };
+  const onTouchEnd = () => {
+    if (swipeX > 80) {
+      // Swipe right — reveal action menu
+      setSwipeX(0);
+      onOpenActionMenu && onOpenActionMenu(task, dKey);
+    } else if (swipeX < -60) {
+      // Swipe left — reveal delete confirm
+      setSwipeX(-80);
+      setShowDeleteConfirm(true);
+    } else {
+      setSwipeX(0);
+      setShowDeleteConfirm(false);
+    }
+    swipeStart.current = null;
+  };
+
   return (
-    <div className="group relative flex items-start gap-2 py-1" draggable={!editing} {...dragHandlers}>
-      <button onClick={() => onToggle(task.id)}
-        className="mt-[3px] flex-shrink-0 flex items-center justify-center transition-all relative"
-        style={{
-          width: 16, height: 16,
-          border: `1.5px solid ${task.completed ? palette.accent : palette.ink3}`,
-          background: task.completed ? palette.accent : 'transparent',
-          borderRadius: 4,
-        }} aria-label="toggle">
-        {task.completed && <Check size={10} color="white" strokeWidth={3.5} />}
-        {inMotion && <span className="absolute -inset-1 rounded animate-pulse-soft" style={{ border: `1px solid ${palette.accent}`, opacity: 0.4 }} />}
-      </button>
-      {editing ? (
-        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onBlur={saveEdit}
-          onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setValue(task.text); setEditing(false); } }}
-          className="flex-1 bg-transparent outline-none text-[14px] leading-snug"
-          style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
-      ) : (
-        <div onClick={handleBodyClick}
-          className="flex-1 text-[14px] leading-snug cursor-text break-words select-none"
-          style={{
-            fontFamily: 'Inter Tight, sans-serif',
-            color: task.completed ? palette.ink3 : palette.ink,
-            textDecoration: task.completed ? 'line-through' : 'none',
-            textDecorationThickness: '1.5px',
-            textDecorationColor: palette.accent,
-            letterSpacing: '-0.005em',
-            background: highlighted ? palette.accentSoft : 'transparent',
-            margin: highlighted ? '-2px -4px' : 0,
-            padding: highlighted ? '2px 4px' : 0,
-            borderRadius: 3,
-          }}>{task.text}</div>
+    <div
+      className="group relative flex items-start gap-2 py-1"
+      draggable={!editing}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      {...dragHandlers}
+    >
+      {/* Swipe-left red delete background */}
+      {showDeleteConfirm && (
+        <div
+          className="absolute inset-y-0 right-0 flex items-center pr-3"
+          style={{ width: 80 }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(task.id); setShowDeleteConfirm(false); setSwipeX(0); }}
+            className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1"
+            style={{ background: '#C9824A', color: 'white', fontFamily: 'Inter Tight, sans-serif', fontWeight: 500, border: 'none' }}
+          >
+            <X size={12} /> Delete
+          </button>
+        </div>
       )}
-      <div className="flex items-center gap-1 flex-shrink-0 mt-[3px]">
-        {!task.completed && (inMotion ? (
-          <button onClick={(e) => { e.stopPropagation(); onPause(task.id); }}
-            className="opacity-60 hover:opacity-100 transition-opacity"
-            style={{ color: palette.accent }} title="Pause"><Pause size={12} /></button>
+
+      <div
+        className="flex items-start gap-2 flex-1"
+        style={{
+          transform: `translateX(${swipeX}px)`,
+          transition: swipeStart.current ? 'none' : 'transform 0.25s ease',
+          background: showDeleteConfirm ? 'white' : 'transparent',
+        }}
+      >
+        <button onClick={() => onToggle(task.id)}
+          className="mt-[3px] flex-shrink-0 flex items-center justify-center transition-all relative"
+          style={{
+            width: 16, height: 16,
+            border: `1.5px solid ${task.completed ? palette.accent : palette.ink3}`,
+            background: task.completed ? palette.accent : 'transparent',
+            borderRadius: 4,
+          }} aria-label="toggle">
+          {task.completed && <Check size={10} color="white" strokeWidth={3.5} />}
+          {inMotion && <span className="absolute -inset-1 rounded animate-pulse-soft" style={{ border: `1px solid ${palette.accent}`, opacity: 0.4 }} />}
+        </button>
+        {editing ? (
+          <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onBlur={saveEdit}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setValue(task.text); setEditing(false); } }}
+            className="flex-1 bg-transparent outline-none text-[14px] leading-snug"
+            style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
         ) : (
-          <button onClick={(e) => { e.stopPropagation(); onStart(task.id); }}
-            className="opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
-            style={{ color: palette.ink2 }} title="Start"><Play size={11} /></button>
-        ))}
-        <div className="relative">
-          <button onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
-            className="opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity"
-            style={{ color: palette.ink2 }}><MoreHorizontal size={13} /></button>
-          {menuOpen && (
-            <TaskMenu
-              onDelete={() => { onDelete(task.id); setMenuOpen(false); }}
-              onFocus={() => { onFocus(task); setMenuOpen(false); }}
-              onClose={() => setMenuOpen(false)} />
-          )}
+          <div onClick={handleBodyClick}
+            className="flex-1 text-[14px] leading-snug cursor-text break-words select-none"
+            style={{
+              fontFamily: 'Inter Tight, sans-serif',
+              color: task.completed ? palette.ink3 : palette.ink,
+              textDecoration: task.completed ? 'line-through' : 'none',
+              textDecorationThickness: '1.5px',
+              textDecorationColor: palette.accent,
+              letterSpacing: '-0.005em',
+              background: highlighted ? palette.accentSoft : 'transparent',
+              margin: highlighted ? '-2px -4px' : 0,
+              padding: highlighted ? '2px 4px' : 0,
+              borderRadius: 3,
+            }}>{task.text}</div>
+        )}
+        <div className="flex items-center gap-1 flex-shrink-0 mt-[3px]">
+          {!task.completed && (inMotion ? (
+            <button onClick={(e) => { e.stopPropagation(); onPause(task.id); }}
+              className="opacity-60 hover:opacity-100 transition-opacity"
+              style={{ color: palette.accent }} title="Pause"><Pause size={12} /></button>
+          ) : (
+            <button onClick={(e) => { e.stopPropagation(); onStart(task.id); }}
+              className="opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
+              style={{ color: palette.ink2 }} title="Start"><Play size={11} /></button>
+          ))}
+          <div className="relative">
+            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+              className="opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity"
+              style={{ color: palette.ink2 }}><MoreHorizontal size={13} /></button>
+            {menuOpen && (
+              <TaskMenu
+                task={task}
+                lists={lists}
+                onDelete={() => { onDelete(task.id); setMenuOpen(false); }}
+                onFocus={() => { onFocus(task); setMenuOpen(false); }}
+                onMoveToTomorrow={() => { onMoveToTomorrow && onMoveToTomorrow(task, dKey); setMenuOpen(false); }}
+                onMoveToSomeday={() => { onMoveToSomeday && onMoveToSomeday(task, dKey); setMenuOpen(false); }}
+                onPickDate={(d) => { onPickDate && onPickDate(task, dKey, d); setMenuOpen(false); }}
+                onMoveToList={(listId) => { onMoveToList && onMoveToList(task, dKey, listId); setMenuOpen(false); }}
+                onClose={() => setMenuOpen(false)}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -291,7 +428,8 @@ function TaskRow({ task, dKey, onToggle, onEdit, onDelete, onStart, onPause, onF
 //  DAY COLUMN
 // ============================================================
 function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
-  dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList, onOpenActionMenu }) {
+  dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList, onOpenActionMenu,
+  lists, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList }) {
   const [input, setInput] = useState('');
   const today = isToday(date);
   const past = isPast(date);
@@ -372,7 +510,7 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
           </div>
         )}
         {tasks.map((task) => (
-          <TaskRow key={task.id} task={task} dKey={dateKey(date)}
+          <TaskRow key={task.id} task={task} dKey={dateKey(date)} lists={lists}
             onToggle={() => onToggle(dateKey(date), task.id)}
             onEdit={(id, text) => onEdit(dateKey(date), id, text)}
             onDelete={() => onDelete(dateKey(date), task.id)}
@@ -380,6 +518,10 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
             onPause={() => onPause(dateKey(date), task.id)}
             onFocus={(t) => onFocus(dateKey(date), t)}
             onOpenActionMenu={onOpenActionMenu}
+            onMoveToTomorrow={onMoveToTomorrow}
+            onMoveToSomeday={onMoveToSomeday}
+            onPickDate={onPickDate}
+            onMoveToList={onMoveToList}
             highlighted={today && topThreeIds.includes(task.id)}
             dragHandlers={{
               onDragStart: (e) => { e.dataTransfer.effectAllowed = 'move'; onDragTaskStart(dateKey(date), task.id); },
@@ -989,6 +1131,11 @@ export default function AlignApp() {
                 onStart={s.startTask} onPause={s.pauseTask}
                 onFocus={(dKey, task) => setFocusTask({ dKey, task })}
                 onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
+                lists={s.lists}
+                onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
+                onMoveToSomeday={(task, dKey) => moveTaskToOffset(dKey, task.id, 30)}
+                onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
+                onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
                 onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                 topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
@@ -1007,6 +1154,11 @@ export default function AlignApp() {
                 onStart={s.startTask} onPause={s.pauseTask}
                 onFocus={(dKey, task) => setFocusTask({ dKey, task })}
                 onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
+                lists={s.lists}
+                onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
+                onMoveToSomeday={(task, dKey) => moveTaskToOffset(dKey, task.id, 30)}
+                onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
+                onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
                 onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                 topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
@@ -1049,11 +1201,13 @@ export default function AlignApp() {
         <TaskActionMenu
           task={actionMenuTask.task}
           currentDate={actionMenuTask.dKey}
+          lists={s.lists}
           onClose={() => setActionMenuTask(null)}
           onComplete={() => { s.toggleTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
           onMoveToTomorrow={() => { moveTaskToOffset(actionMenuTask.dKey, actionMenuTask.task.id, 1); setActionMenuTask(null); }}
           onMoveToSomeday={() => { moveTaskToOffset(actionMenuTask.dKey, actionMenuTask.task.id, 30); setActionMenuTask(null); }}
           onMoveToDate={(d) => { s.moveTaskBetweenDays(actionMenuTask.dKey, d, actionMenuTask.task.id); setActionMenuTask(null); }}
+          onMoveToList={(listId) => { s.moveTaskToList(actionMenuTask.dKey, actionMenuTask.task.id, listId); setActionMenuTask(null); }}
           onDelete={() => { s.deleteTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
         />
       )}
