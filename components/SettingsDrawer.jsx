@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Calendar, Plus, Trash2, Check, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase-client';
 
-// Mirrors CALENDAR_WRITE_SCOPE from lib/google-oauth.js.
+// Mirrors CALENDAR_WRITE_SCOPE / CALENDAR_LIST_SCOPE from lib/google-oauth.js.
 // Kept inline so the client bundle never imports server-only OAuth helpers.
 const CALENDAR_WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
@@ -23,23 +23,28 @@ const palette = {
 };
 
 export default function SettingsDrawer({ open, onClose, user }) {
-  // --- iCal feeds (existing) ---
+  // --- iCal feeds (unchanged) ---
   const [feeds, setFeeds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('Personal');
   const [newUrl, setNewUrl] = useState('');
 
-  // --- Google connections (Phase 2) ---
+  // --- Google connections ---
   const [googleConns, setGoogleConns] = useState([]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [addingGoogle, setAddingGoogle] = useState(false);
   const [newGoogleLabel, setNewGoogleLabel] = useState('Personal');
 
+  // --- Calendar lists per connection (Phase 3) ---
+  // Shape: { [google_email]: { can_list, calendars: [{id, summary, primary}], reason, write_calendar_id } }
+  const [calendarLists, setCalendarLists] = useState({});
+  const [savingCalendar, setSavingCalendar] = useState({}); // { [email]: bool }
+
   // Shared notice surface
   const [notice, setNotice] = useState(null);
 
-  // Load both sources whenever the drawer opens.
+  // Load iCal feeds + Google connections + calendar lists on open
   useEffect(() => {
     if (!open || !user) return;
     const supabase = createClient();
@@ -73,10 +78,22 @@ export default function SettingsDrawer({ open, onClose, user }) {
         setGoogleConns(data || []);
         setGoogleLoading(false);
       });
+
+    // Calendar lists come from a server-side API since we need token refresh.
+    fetch('/api/google/calendars')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.connections) return;
+        const map = {};
+        for (const c of data.connections) {
+          map[c.google_email] = c;
+        }
+        setCalendarLists(map);
+      })
+      .catch((err) => console.error('[Align] Load calendar lists error:', err));
   }, [open, user]);
 
-  // Surface OAuth redirect result, then clean the URL so a refresh
-  // doesn't show the toast again.
+  // Surface OAuth redirect result, then clean the URL.
   useEffect(() => {
     if (!open || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -117,10 +134,34 @@ export default function SettingsDrawer({ open, onClose, user }) {
     setNotice({ kind: 'success', text: `Disconnected ${label}` });
   };
 
+  // Save the user's write-calendar choice. RLS restricts updates to own rows.
+  const saveWriteCalendar = async (googleEmail, calendarId) => {
+    setSavingCalendar((s) => ({ ...s, [googleEmail]: true }));
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('google_calendar_connections')
+      .update({ write_calendar_id: calendarId, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('google_email', googleEmail);
+    setSavingCalendar((s) => ({ ...s, [googleEmail]: false }));
+    if (error) {
+      setNotice({ kind: 'error', text: error.message });
+      return;
+    }
+    // Update both pieces of local state so the UI reflects the choice.
+    setGoogleConns((prev) =>
+      prev.map((c) => (c.google_email === googleEmail ? { ...c, write_calendar_id: calendarId } : c))
+    );
+    setCalendarLists((prev) => ({
+      ...prev,
+      [googleEmail]: prev[googleEmail] ? { ...prev[googleEmail], write_calendar_id: calendarId } : prev[googleEmail],
+    }));
+  };
+
   const hasWriteScope = (conn) =>
     Array.isArray(conn?.scopes) && conn.scopes.includes(CALENDAR_WRITE_SCOPE);
 
-  // --- iCal handlers (existing, unchanged) ---
+  // --- iCal handlers (unchanged) ---
 
   const addFeed = async () => {
     if (!newUrl.trim() || !newLabel.trim()) return;
@@ -163,8 +204,6 @@ export default function SettingsDrawer({ open, onClose, user }) {
     const googleEmails = new Set(googleConns.map((c) => c.google_email.toLowerCase()));
     return feeds
       .map((f) => {
-        // Heuristic: pull email from a Google iCal URL like
-        // https://calendar.google.com/calendar/ical/<EMAIL>/private-.../basic.ics
         const m = f.ics_url.match(/\/ical\/([^/]+)\//);
         if (!m) return null;
         const decoded = decodeURIComponent(m[1]).toLowerCase();
@@ -185,6 +224,19 @@ export default function SettingsDrawer({ open, onClose, user }) {
     border: `1px solid ${palette.border}`,
     borderRadius: '6px',
     outline: 'none',
+  };
+
+  const calendarSelectStyle = {
+    padding: '0.25rem 0.5rem',
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.75rem',
+    color: palette.ink,
+    background: palette.bg,
+    border: `1px solid ${palette.border}`,
+    borderRadius: '4px',
+    outline: 'none',
+    cursor: 'pointer',
+    maxWidth: '180px',
   };
 
   const sectionHeader = {
@@ -214,6 +266,31 @@ export default function SettingsDrawer({ open, onClose, user }) {
     borderRadius: '6px',
     cursor: 'pointer',
   };
+
+  const badgeStyle = (color, bg) => ({
+    display: 'inline-block',
+    padding: '2px 8px',
+    background: bg,
+    color,
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.65rem',
+    fontWeight: 600,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    borderRadius: '10px',
+  });
+
+  const linkBtn = (color) => ({
+    background: 'transparent',
+    color,
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.72rem',
+    fontWeight: 500,
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+  });
 
   return (
     <>
@@ -269,7 +346,7 @@ export default function SettingsDrawer({ open, onClose, user }) {
           )}
 
           {/* ============================================================
-              GOOGLE CALENDAR (new in Phase 2)
+              GOOGLE CALENDAR
               ============================================================ */}
           <section style={{ marginBottom: 32 }}>
             <div className="flex items-center gap-2 mb-2">
@@ -289,6 +366,11 @@ export default function SettingsDrawer({ open, onClose, user }) {
                 <ul className="space-y-2 mb-3">
                   {googleConns.map((conn) => {
                     const canWrite = hasWriteScope(conn);
+                    const calInfo = calendarLists[conn.google_email];
+                    const canListCalendars = calInfo?.can_list;
+                    const calendars = calInfo?.calendars || [];
+                    const isSaving = savingCalendar[conn.google_email];
+
                     return (
                       <li
                         key={conn.id}
@@ -303,62 +385,56 @@ export default function SettingsDrawer({ open, onClose, user }) {
                           <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {conn.google_email}
                           </div>
+
+                          {/* Scope status */}
                           <div style={{ marginTop: 6 }}>
                             {canWrite ? (
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '2px 8px',
-                                  background: palette.accentSoft,
-                                  color: palette.accent,
-                                  fontFamily: 'Inter Tight, sans-serif',
-                                  fontSize: '0.65rem',
-                                  fontWeight: 600,
-                                  letterSpacing: '0.05em',
-                                  textTransform: 'uppercase',
-                                  borderRadius: '10px',
-                                }}
-                              >
-                                Write enabled
-                              </span>
+                              <span style={badgeStyle(palette.accent, palette.accentSoft)}>Write enabled</span>
                             ) : (
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span
-                                  style={{
-                                    display: 'inline-block',
-                                    padding: '2px 8px',
-                                    background: palette.warnSoft,
-                                    color: palette.warn,
-                                    fontFamily: 'Inter Tight, sans-serif',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 600,
-                                    letterSpacing: '0.05em',
-                                    textTransform: 'uppercase',
-                                    borderRadius: '10px',
-                                  }}
-                                >
-                                  Read only
-                                </span>
-                                <button
-                                  onClick={() => connectGoogle(conn.label)}
-                                  className="flex items-center gap-1"
-                                  style={{
-                                    background: 'transparent',
-                                    color: palette.warn,
-                                    fontFamily: 'Inter Tight, sans-serif',
-                                    fontSize: '0.72rem',
-                                    fontWeight: 500,
-                                    border: 'none',
-                                    padding: 0,
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                  }}
-                                >
-                                  <RefreshCw size={10} /> Reconnect to enable writing
+                                <span style={badgeStyle(palette.warn, palette.warnSoft)}>Read only</span>
+                                <button onClick={() => connectGoogle(conn.label)} style={linkBtn(palette.warn)}>
+                                  <RefreshCw size={10} style={{ display: 'inline', marginRight: 3 }} />
+                                  Reconnect to enable writing
                                 </button>
                               </div>
                             )}
                           </div>
+
+                          {/* Calendar picker — only shown for connections that can write */}
+                          {canWrite && (
+                            <div style={{ marginTop: 8 }}>
+                              {canListCalendars && calendars.length > 0 ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span style={{ ...subtleText, fontSize: '0.72rem' }}>Write new events to:</span>
+                                  <select
+                                    value={conn.write_calendar_id || 'primary'}
+                                    onChange={(e) => saveWriteCalendar(conn.google_email, e.target.value)}
+                                    disabled={isSaving}
+                                    style={calendarSelectStyle}
+                                  >
+                                    {calendars.map((cal) => (
+                                      <option key={cal.id} value={cal.id}>
+                                        {cal.primary ? `Primary (${cal.summary})` : cal.summary}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {isSaving && <span style={{ ...subtleText, fontSize: '0.7rem' }}>Saving…</span>}
+                                </div>
+                              ) : calInfo === undefined ? (
+                                <span style={{ ...subtleText, fontSize: '0.7rem', fontStyle: 'italic' }}>Loading calendars…</span>
+                              ) : (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span style={{ ...subtleText, fontSize: '0.72rem' }}>
+                                    Always writes to primary calendar.
+                                  </span>
+                                  <button onClick={() => connectGoogle(conn.label)} style={linkBtn(palette.ink2)}>
+                                    Reconnect to choose
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={() => disconnectGoogle(conn.google_email, conn.label)}
@@ -451,7 +527,7 @@ export default function SettingsDrawer({ open, onClose, user }) {
           </section>
 
           {/* ============================================================
-              iCAL FEEDS (existing, unchanged below)
+              iCAL FEEDS (unchanged)
               ============================================================ */}
           <section>
             <div className="flex items-center gap-2 mb-3">
