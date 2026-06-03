@@ -1347,8 +1347,38 @@ export default function AlignApp() {
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} />
-      <QuickCaptureDrawer open={quickOpen} onClose={() => setQuickOpen(false)} onCapture={s.addBrain} />
-
+      <QuickCaptureDrawer
+        open={quickOpen}
+        onClose={() => setQuickOpen(false)}
+        onCapture={s.addBrain}
+        onCreateEvent={async (parsed) => {
+          // Quick Capture's smart path: Claude parsed this as an event,
+          // so create the Google Calendar event AND add an Align task at the parsed date.
+          const tz = typeof Intl !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : 'UTC';
+          const res = await fetch('/api/google/create-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: parsed.title,
+              date: parsed.date,
+              time: parsed.time,
+              duration_minutes: parsed.duration_minutes || 60,
+              all_day: !!parsed.all_day,
+              user_timezone: tz,
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          // Also drop a task on the day so it shows up in Align's week grid.
+          s.addTask(parsed.date, parsed.title);
+          return data; // { event_id, html_link, calendar_id, google_email, label }
+        }}
+      />
       {actionMenuTask && (
         <TaskActionMenu
           task={actionMenuTask.task}
