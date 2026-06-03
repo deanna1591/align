@@ -40,6 +40,11 @@ export async function GET(request) {
     const info = await fetchGoogleUserInfo(tokens.access_token);
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
+    // Google returns granted scopes as a space-separated string.
+    // We store them so the UI can tell whether this connection
+    // has write permission without re-consenting.
+    const grantedScopes = (tokens.scope || '').split(' ').filter(Boolean);
+
     const { error: upsertErr } = await supabase
       .from('google_calendar_connections')
       .upsert({
@@ -49,6 +54,7 @@ export async function GET(request) {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expires_at: expiresAt,
+        scopes: grantedScopes,
         calendar_ids: ['primary'],
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,google_email' });

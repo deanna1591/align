@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, Plus, Trash2, Check, ExternalLink } from 'lucide-react';
+import { X, Calendar, Plus, Trash2, Check, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase-client';
+
+// Mirrors CALENDAR_WRITE_SCOPE from lib/google-oauth.js.
+// Kept inline so the client bundle never imports server-only OAuth helpers.
+const CALENDAR_WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 const palette = {
   bg: '#FFFFFF',
@@ -14,20 +18,33 @@ const palette = {
   borderSoft: '#F2F2F2',
   accent: '#7CA481',
   accentSoft: 'rgba(124,164,129,0.10)',
+  warn: '#C9824A',
+  warnSoft: 'rgba(201,130,74,0.10)',
 };
 
 export default function SettingsDrawer({ open, onClose, user }) {
+  // --- iCal feeds (existing) ---
   const [feeds, setFeeds] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState(null);
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('Personal');
   const [newUrl, setNewUrl] = useState('');
 
+  // --- Google connections (Phase 2) ---
+  const [googleConns, setGoogleConns] = useState([]);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [addingGoogle, setAddingGoogle] = useState(false);
+  const [newGoogleLabel, setNewGoogleLabel] = useState('Personal');
+
+  // Shared notice surface
+  const [notice, setNotice] = useState(null);
+
+  // Load both sources whenever the drawer opens.
   useEffect(() => {
     if (!open || !user) return;
-    setLoading(true);
     const supabase = createClient();
+
+    setLoading(true);
     supabase
       .from('calendar_feeds')
       .select('id, label, ics_url, created_at')
@@ -41,25 +58,83 @@ export default function SettingsDrawer({ open, onClose, user }) {
         setFeeds(data || []);
         setLoading(false);
       });
+
+    setGoogleLoading(true);
+    supabase
+      .from('google_calendar_connections')
+      .select('id, google_email, label, scopes, write_calendar_id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Align] Load Google connections error:', error);
+          setNotice({ kind: 'error', text: error.message });
+        }
+        setGoogleConns(data || []);
+        setGoogleLoading(false);
+      });
   }, [open, user]);
+
+  // Surface OAuth redirect result, then clean the URL so a refresh
+  // doesn't show the toast again.
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('google_connected');
+    const error = params.get('google_error');
+    if (connected) {
+      setNotice({ kind: 'success', text: `Connected ${decodeURIComponent(connected)}` });
+    } else if (error) {
+      setNotice({ kind: 'error', text: `Google: ${decodeURIComponent(error)}` });
+    }
+    if (connected || error) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_connected');
+      url.searchParams.delete('google_error');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [open]);
+
+  // --- Google handlers ---
+
+  const connectGoogle = (label) => {
+    window.location.href = `/auth/google/start?label=${encodeURIComponent(label)}`;
+  };
+
+  const disconnectGoogle = async (googleEmail, label) => {
+    if (!confirm(`Disconnect ${googleEmail}?`)) return;
+    const res = await fetch('/auth/google/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ google_email: googleEmail }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setNotice({ kind: 'error', text: body.error || 'Disconnect failed' });
+      return;
+    }
+    setGoogleConns((prev) => prev.filter((c) => c.google_email !== googleEmail));
+    setNotice({ kind: 'success', text: `Disconnected ${label}` });
+  };
+
+  const hasWriteScope = (conn) =>
+    Array.isArray(conn?.scopes) && conn.scopes.includes(CALENDAR_WRITE_SCOPE);
+
+  // --- iCal handlers (existing, unchanged) ---
 
   const addFeed = async () => {
     if (!newUrl.trim() || !newLabel.trim()) return;
     const url = newUrl.trim();
-
-    // Basic validation: must look like an https URL with .ics or "ical" in the path
     if (!/^https?:\/\//i.test(url)) {
       setNotice({ kind: 'error', text: 'URL must start with https://' });
       return;
     }
-
     const supabase = createClient();
     const { data, error } = await supabase
       .from('calendar_feeds')
       .insert({ user_id: user.id, label: newLabel.trim(), ics_url: url })
       .select()
       .single();
-
     if (error) {
       setNotice({ kind: 'error', text: error.message });
       return;
@@ -83,6 +158,23 @@ export default function SettingsDrawer({ open, onClose, user }) {
     setNotice({ kind: 'success', text: `Removed ${label}` });
   };
 
+  // Non-blocking warning: same email connected via both Google and iCal feed.
+  const duplicateEmails = (() => {
+    const googleEmails = new Set(googleConns.map((c) => c.google_email.toLowerCase()));
+    return feeds
+      .map((f) => {
+        // Heuristic: pull email from a Google iCal URL like
+        // https://calendar.google.com/calendar/ical/<EMAIL>/private-.../basic.ics
+        const m = f.ics_url.match(/\/ical\/([^/]+)\//);
+        if (!m) return null;
+        const decoded = decodeURIComponent(m[1]).toLowerCase();
+        return googleEmails.has(decoded) ? decoded : null;
+      })
+      .filter(Boolean);
+  })();
+
+  // --- Shared styles ---
+
   const inputStyle = {
     width: '100%',
     padding: '0.5rem 0.75rem',
@@ -93,6 +185,34 @@ export default function SettingsDrawer({ open, onClose, user }) {
     border: `1px solid ${palette.border}`,
     borderRadius: '6px',
     outline: 'none',
+  };
+
+  const sectionHeader = {
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    color: palette.ink2,
+  };
+
+  const subtleText = {
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.78rem',
+    color: palette.ink3,
+    lineHeight: 1.5,
+  };
+
+  const primaryBtn = {
+    background: palette.accent,
+    color: 'white',
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.8rem',
+    fontWeight: 500,
+    border: 'none',
+    padding: '0.375rem 1rem',
+    borderRadius: '6px',
+    cursor: 'pointer',
   };
 
   return (
@@ -148,19 +268,195 @@ export default function SettingsDrawer({ open, onClose, user }) {
             </div>
           )}
 
+          {/* ============================================================
+              GOOGLE CALENDAR (new in Phase 2)
+              ============================================================ */}
+          <section style={{ marginBottom: 32 }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar size={14} style={{ color: palette.accent }} />
+              <h3 style={sectionHeader}>Google Calendar (recommended)</h3>
+            </div>
+            <p style={{ ...subtleText, marginBottom: 14 }}>
+              Connect for two-way sync — write events to Google when you add tasks with a date and time.
+            </p>
+
+            {googleLoading ? (
+              <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>
+                Loading…
+              </p>
+            ) : (
+              <>
+                <ul className="space-y-2 mb-3">
+                  {googleConns.map((conn) => {
+                    const canWrite = hasWriteScope(conn);
+                    return (
+                      <li
+                        key={conn.id}
+                        className="flex items-start gap-3 px-3 py-2.5 rounded"
+                        style={{ background: palette.bg, border: `1px solid ${palette.border}` }}
+                      >
+                        <Check size={13} style={{ color: palette.accent, flexShrink: 0, marginTop: 3 }} />
+                        <div className="flex-1 min-w-0">
+                          <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', color: palette.ink, fontWeight: 500 }}>
+                            {conn.label}
+                          </div>
+                          <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {conn.google_email}
+                          </div>
+                          <div style={{ marginTop: 6 }}>
+                            {canWrite ? (
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '2px 8px',
+                                  background: palette.accentSoft,
+                                  color: palette.accent,
+                                  fontFamily: 'Inter Tight, sans-serif',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
+                                  letterSpacing: '0.05em',
+                                  textTransform: 'uppercase',
+                                  borderRadius: '10px',
+                                }}
+                              >
+                                Write enabled
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '2px 8px',
+                                    background: palette.warnSoft,
+                                    color: palette.warn,
+                                    fontFamily: 'Inter Tight, sans-serif',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    letterSpacing: '0.05em',
+                                    textTransform: 'uppercase',
+                                    borderRadius: '10px',
+                                  }}
+                                >
+                                  Read only
+                                </span>
+                                <button
+                                  onClick={() => connectGoogle(conn.label)}
+                                  className="flex items-center gap-1"
+                                  style={{
+                                    background: 'transparent',
+                                    color: palette.warn,
+                                    fontFamily: 'Inter Tight, sans-serif',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                  }}
+                                >
+                                  <RefreshCw size={10} /> Reconnect to enable writing
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => disconnectGoogle(conn.google_email, conn.label)}
+                          className="p-1 hover:opacity-100 opacity-50 transition-opacity"
+                          style={{ color: palette.ink3 }}
+                          title="Disconnect"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {duplicateEmails.length > 0 && (
+                  <div
+                    className="mb-3 px-3 py-2 rounded flex items-start gap-2"
+                    style={{
+                      background: palette.warnSoft,
+                      color: palette.warn,
+                      fontFamily: 'Inter Tight, sans-serif',
+                      fontSize: '0.75rem',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span>
+                      You have an iCal feed for {duplicateEmails.join(', ')}. Consider removing it below to avoid duplicate events.
+                    </span>
+                  </div>
+                )}
+
+                {addingGoogle ? (
+                  <div className="space-y-2 mb-3 p-3 rounded" style={{ background: palette.bg, border: `1px solid ${palette.border}` }}>
+                    <div>
+                      <label style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: palette.ink2 }}>
+                        Label
+                      </label>
+                      <select
+                        value={newGoogleLabel}
+                        onChange={(e) => setNewGoogleLabel(e.target.value)}
+                        style={{ ...inputStyle, marginTop: 4 }}
+                      >
+                        <option value="Personal">Personal</option>
+                        <option value="Work">Work</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button onClick={() => connectGoogle(newGoogleLabel)} style={primaryBtn}>
+                        Continue to Google
+                      </button>
+                      <button
+                        onClick={() => setAddingGoogle(false)}
+                        style={{
+                          background: 'transparent',
+                          color: palette.ink2,
+                          fontFamily: 'Inter Tight, sans-serif',
+                          fontSize: '0.8rem',
+                          border: 'none',
+                          padding: '0.375rem 1rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p style={{ ...subtleText, fontSize: '0.7rem', marginTop: 4 }}>
+                      You'll be sent to Google to grant Align permission to view and edit events on your calendars.
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingGoogle(true)}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded transition-colors"
+                    style={{
+                      background: 'transparent',
+                      border: `1px dashed ${palette.accent}`,
+                      color: palette.accent,
+                      fontFamily: 'Inter Tight, sans-serif',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <Plus size={13} /> {googleConns.length === 0 ? 'Connect Google Calendar' : 'Connect another account'}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
+
+          {/* ============================================================
+              iCAL FEEDS (existing, unchanged below)
+              ============================================================ */}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <Calendar size={14} style={{ color: palette.accent }} />
-              <h3 style={{
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                color: palette.ink2,
-              }}>
-                Calendar feeds
-              </h3>
+              <Calendar size={14} style={{ color: palette.ink2 }} />
+              <h3 style={sectionHeader}>iCal feeds (read-only)</h3>
             </div>
 
             {loading ? (
@@ -233,29 +529,19 @@ export default function SettingsDrawer({ open, onClose, user }) {
                       />
                     </div>
                     <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={addFeed}
-                        className="px-4 py-1.5 rounded transition-colors"
-                        style={{
-                          background: palette.accent,
-                          color: 'white',
-                          fontFamily: 'Inter Tight, sans-serif',
-                          fontSize: '0.8rem',
-                          fontWeight: 500,
-                          border: 'none',
-                        }}
-                      >
+                      <button onClick={addFeed} style={primaryBtn}>
                         Add feed
                       </button>
                       <button
                         onClick={() => { setAdding(false); setNewUrl(''); }}
-                        className="px-4 py-1.5"
                         style={{
                           background: 'transparent',
                           color: palette.ink2,
                           fontFamily: 'Inter Tight, sans-serif',
                           fontSize: '0.8rem',
                           border: 'none',
+                          padding: '0.375rem 1rem',
+                          cursor: 'pointer',
                         }}
                       >
                         Cancel
