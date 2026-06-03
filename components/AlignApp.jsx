@@ -882,7 +882,9 @@ export default function AlignApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list' | 'focus'
+  // Day shown in the "focus" view's top block. Strip below shows focusDay+1..+4.
+  const [focusDay, setFocusDay] = useState(today0());
   const [events, setEvents] = useState([]);
   const [actionMenuTask, setActionMenuTask] = useState(null); // { task, dKey }
   const [mobileTab, setMobileTab] = useState('week'); // 'week' | 'lists'
@@ -1088,12 +1090,12 @@ export default function AlignApp() {
             }}>{fmtFullDate(today0())}</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* View mode toggle */}
-            <button onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+            {/* View mode toggle: grid → list → focus → grid */}
+            <button onClick={() => setViewMode(v => v === 'grid' ? 'list' : v === 'list' ? 'focus' : 'grid')}
               className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
-              title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}>
-              {viewMode === 'grid' ? <LayoutList size={14} /> : <LayoutGrid size={14} />}
+              title={viewMode === 'grid' ? 'Switch to list view' : viewMode === 'list' ? 'Switch to focus view' : 'Switch to grid view'}>
+              {viewMode === 'grid' ? <LayoutList size={14} /> : viewMode === 'list' ? <CalendarDays size={14} /> : <LayoutGrid size={14} />}
             </button>
             <button onClick={() => setBrainOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Brain dump (B)"><Brain size={14} /></button>
@@ -1153,7 +1155,196 @@ export default function AlignApp() {
 
         {/* Week container: hide on mobile when Lists tab is active */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
-        {viewMode === 'list' ? (
+        {viewMode === 'focus' ? (
+          <div ref={weekGridRef}>
+            {/* FOCUS DAY (top block) */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <button
+                  onClick={() => setFocusDay(d => { const x = new Date(d); x.setDate(x.getDate() - 1); return x; })}
+                  className="p-2 rounded-full hover:bg-black/[0.04]"
+                  style={{ color: palette.ink2 }}
+                  title="Previous day"
+                ><ChevronLeft size={18} /></button>
+                <div className="flex items-center gap-3">
+                  {isToday(focusDay) && (
+                    <span style={{
+                      fontFamily: 'Inter Tight, sans-serif',
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      color: palette.accent,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: palette.accentSoft,
+                    }}>Today</span>
+                  )}
+                  {!isToday(focusDay) && (
+                    <button
+                      onClick={() => setFocusDay(today0())}
+                      style={{
+                        background: 'transparent',
+                        color: palette.ink3,
+                        fontFamily: 'Inter Tight, sans-serif',
+                        fontSize: '0.7rem',
+                        fontWeight: 500,
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        border: `1px solid ${palette.border}`,
+                        padding: '2px 10px',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                      }}
+                    >Jump to today</button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setFocusDay(d => { const x = new Date(d); x.setDate(x.getDate() + 1); return x; })}
+                  className="p-2 rounded-full hover:bg-black/[0.04]"
+                  style={{ color: palette.ink2 }}
+                  title="Next day"
+                ><ChevronRight size={18} /></button>
+              </div>
+              <div
+                className="rounded-lg px-4 py-4"
+                style={{ background: palette.bg, border: `1px solid ${palette.borderSoft}` }}
+              >
+                <DayColumn
+                  date={focusDay}
+                  tasks={s.tasks[dateKey(focusDay)] || []}
+                  events={eventsByDate[dateKey(focusDay)] || []}
+                  onAdd={(text) => s.addTask(dateKey(focusDay), text)}
+                  onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
+                  onStart={s.startTask} onPause={s.pauseTask}
+                  onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+                  onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
+                  lists={s.lists}
+                  onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
+                  onMoveToSomeday={(task, dKey) => moveTaskToSomeday(dKey, task.id)}
+                  onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
+                  onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
+                  dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
+                  onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
+                  topThreeIds={dateKey(focusDay) === todayKey ? topThreeIds : []}
+                  inList={true}
+                />
+              </div>
+            </div>
+
+            {/* COMING UP (4-day strip) */}
+            <div>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <button
+                  onClick={() => setFocusDay(d => { const x = new Date(d); x.setDate(x.getDate() - 1); return x; })}
+                  className="p-2 rounded-full hover:bg-black/[0.04]"
+                  style={{ color: palette.ink2 }}
+                  title="Previous day"
+                ><ChevronLeft size={16} /></button>
+                <span style={{
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: palette.ink3,
+                }}>Coming up</span>
+                <button
+                  onClick={() => setFocusDay(d => { const x = new Date(d); x.setDate(x.getDate() + 1); return x; })}
+                  className="p-2 rounded-full hover:bg-black/[0.04]"
+                  style={{ color: palette.ink2 }}
+                  title="Next day"
+                ><ChevronRight size={16} /></button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[1, 2, 3, 4].map(offset => {
+                  const d = new Date(focusDay);
+                  d.setDate(d.getDate() + offset);
+                  const dKey = dateKey(d);
+                  const dayTasks = (s.tasks[dKey] || []).filter(t => !t.completed);
+                  const dayEvents = eventsByDate[dKey] || [];
+                  const empty = dayTasks.length === 0 && dayEvents.length === 0;
+                  return (
+                    <button
+                      key={dKey}
+                      onClick={() => setFocusDay(d)}
+                      className="text-left p-3 rounded transition-colors hover:bg-black/[0.02]"
+                      style={{
+                        background: palette.bg,
+                        border: `1px solid ${palette.borderSoft}`,
+                        minHeight: 120,
+                      }}
+                      title={`Focus on ${fmtDay(d)} ${fmtDate(d)}`}
+                    >
+                      <div style={{
+                        fontFamily: 'Inter Tight, sans-serif',
+                        fontSize: '0.62rem',
+                        fontWeight: 600,
+                        letterSpacing: '0.15em',
+                        textTransform: 'uppercase',
+                        color: palette.ink3,
+                        marginBottom: 2,
+                      }}>
+                        {fmtDay(d).slice(0, 3)}
+                      </div>
+                      <div style={{
+                        fontFamily: 'Fraunces, serif',
+                        fontSize: '1rem',
+                        color: palette.ink,
+                        letterSpacing: '-0.01em',
+                        marginBottom: 8,
+                      }}>
+                        {fmtDate(d)}
+                      </div>
+                      <div className="space-y-1">
+                        {dayEvents.slice(0, 2).map(ev => (
+                          <div key={ev.id} style={{
+                            fontFamily: 'Inter Tight, sans-serif',
+                            fontSize: '0.72rem',
+                            color: palette.ink2,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            · {ev.title}
+                          </div>
+                        ))}
+                        {dayTasks.slice(0, 3).map(t => (
+                          <div key={t.id} style={{
+                            fontFamily: 'Inter Tight, sans-serif',
+                            fontSize: '0.72rem',
+                            color: palette.ink,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            ☐ {t.text}
+                          </div>
+                        ))}
+                        {(dayEvents.length > 2 || dayTasks.length > 3) && (
+                          <div style={{
+                            fontFamily: 'Inter Tight, sans-serif',
+                            fontSize: '0.68rem',
+                            color: palette.ink3,
+                            fontStyle: 'italic',
+                          }}>+ more</div>
+                        )}
+                        {empty && (
+                          <div style={{
+                            fontFamily: 'Fraunces, serif',
+                            fontSize: '0.8rem',
+                            color: palette.ink3,
+                            fontStyle: 'italic',
+                          }}>nothing yet</div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : viewMode === 'list' ? (
           <div ref={weekGridRef} className="flex flex-col gap-8">
             {days.map(d => (
               <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
