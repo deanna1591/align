@@ -49,6 +49,11 @@ const palette = {
   warm: '#C9824A',
   errBg: '#FBE9E5',
   errInk: '#8C3A2A',
+  // Event source colors — calendar events render as pills tinted by their source label.
+  eventPersonalBg: '#FBE7EC',
+  eventPersonalDot: '#C8717F',
+  eventWorkBg: '#E5EDF4',
+  eventWorkDot: '#6B7F8D',
 };
 
 // ============================================================
@@ -467,48 +472,54 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
       <div className="flex-1 space-y-0.5 pl-2">
         {events && events.length > 0 && (
           <div className="mb-2 space-y-1">
-            {events.map((ev) => (
-              <a
-                key={`${ev.sourceEmail}-${ev.id}`}
-                href={ev.htmlLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start gap-2 py-1 transition-opacity hover:opacity-100"
-                style={{ opacity: 0.85 }}
-                title={ev.location ? `${ev.title} — ${ev.location}` : ev.title}
-              >
-                <span
-                  className="mt-[5px] flex-shrink-0 rounded-sm"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    background: ev.source === 'Work' ? '#6B7F8D' : palette.accent,
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div style={{
-                    fontFamily: 'Inter Tight, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    color: palette.ink,
-                    letterSpacing: '-0.005em',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {ev.title}
+            {events.map((ev) => {
+              const isWork = ev.source === 'Work';
+              const isPersonal = ev.source === 'Personal';
+              const pillBg = isWork ? palette.eventWorkBg : isPersonal ? palette.eventPersonalBg : palette.accentSofter;
+              const dotBg = isWork ? palette.eventWorkDot : isPersonal ? palette.eventPersonalDot : palette.accent;
+              return (
+                <a
+                  key={`${ev.sourceEmail}-${ev.id}`}
+                  href={ev.htmlLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2 px-2 py-1 rounded transition-opacity hover:opacity-100"
+                  style={{ opacity: 0.92, background: pillBg }}
+                  title={ev.location ? `${ev.title} — ${ev.location}` : ev.title}
+                >
+                  <span
+                    className="mt-[5px] flex-shrink-0 rounded-sm"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: dotBg,
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div style={{
+                      fontFamily: 'Inter Tight, sans-serif',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: palette.ink,
+                      letterSpacing: '-0.005em',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {ev.title}
+                    </div>
+                    <div style={{
+                      fontFamily: 'Inter Tight, sans-serif',
+                      fontSize: '10px',
+                      color: palette.ink3,
+                      letterSpacing: '0.02em',
+                    }}>
+                      {ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
+                    </div>
                   </div>
-                  <div style={{
-                    fontFamily: 'Inter Tight, sans-serif',
-                    fontSize: '10px',
-                    color: palette.ink3,
-                    letterSpacing: '0.02em',
-                  }}>
-                    {ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
-                  </div>
-                </div>
-              </a>
-            ))}
+                </a>
+              );
+            })}
             {tasks.length > 0 && <div className="h-px my-2" style={{ background: palette.borderSoft }} />}
           </div>
         )}
@@ -910,6 +921,19 @@ export default function AlignApp() {
     const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
   }), [weekStart]);
 
+  // Leftover: incomplete tasks dated before today. Grouped by original date,
+  // most recent first. Derived from s.tasks — no separate storage.
+  const leftoverGroups = useMemo(() => {
+    const tKey = dateKey(today0());
+    return Object.keys(s.tasks)
+      .filter(k => k !== 'someday' && k < tKey)
+      .sort()
+      .reverse()
+      .map(k => ({ dKey: k, tasks: (s.tasks[k] || []).filter(t => !t.completed) }))
+      .filter(g => g.tasks.length > 0);
+  }, [s.tasks]);
+  const leftoverCount = leftoverGroups.reduce((n, g) => n + g.tasks.length, 0);
+
   // Fetch calendar events for current week, refetch every 60 seconds while open
   useEffect(() => {
     if (!s.user) return;
@@ -1175,6 +1199,73 @@ export default function AlignApp() {
           </div>
         )}
         </div>
+
+        {/* Left over: incomplete tasks from previous days */}
+        {leftoverCount > 0 && (
+          <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
+            <div className="mt-10 pt-6" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
+              <div className="flex items-center gap-3 mb-4">
+                <RotateCcw size={14} style={{ color: palette.warm }} />
+                <h2 style={{
+                  fontFamily: 'Fraunces, serif',
+                  fontWeight: 400,
+                  fontSize: '1.4rem',
+                  letterSpacing: '-0.01em',
+                  color: palette.ink,
+                }}>Left over</h2>
+                <span style={{
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.7rem',
+                  color: palette.ink3,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}>{leftoverCount}</span>
+              </div>
+              <div className="max-w-[640px] space-y-5">
+                {leftoverGroups.map(group => {
+                  const d = new Date(group.dKey + 'T00:00:00');
+                  const daysAgo = Math.round((today0() - d) / 86400000);
+                  const subheading = daysAgo === 1
+                    ? 'Yesterday'
+                    : `${fmtDay(d)} · ${fmtDate(d)}`;
+                  return (
+                    <div key={group.dKey}>
+                      <div style={{
+                        fontFamily: 'Inter Tight, sans-serif',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: palette.ink3,
+                        marginBottom: 4,
+                        paddingLeft: 8,
+                      }}>{subheading}</div>
+                      {group.tasks.map(task => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          dKey={group.dKey}
+                          lists={s.lists}
+                          onToggle={() => s.toggleTask(group.dKey, task.id)}
+                          onEdit={(id, text) => s.editTask(group.dKey, id, text)}
+                          onDelete={(id) => s.deleteTask(group.dKey, id)}
+                          onStart={(id) => s.startTask(group.dKey, id)}
+                          onPause={(id) => s.pauseTask(group.dKey, id)}
+                          onFocus={(t) => setFocusTask({ dKey: group.dKey, task: t })}
+                          onOpenActionMenu={(t, dk) => setActionMenuTask({ task: t, dKey: group.dKey })}
+                          onMoveToTomorrow={(t, dk) => moveTaskToOffset(group.dKey, task.id, 1)}
+                          onMoveToSomeday={(t, dk) => moveTaskToSomeday(group.dKey, task.id)}
+                          onPickDate={(t, dk, toDate) => s.moveTaskBetweenDays(group.dKey, toDate, task.id)}
+                          onMoveToList={(t, dk, listId) => s.moveTaskToList(group.dKey, task.id, listId)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Someday: tasks with no date — appears between the week grid and Lists */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
