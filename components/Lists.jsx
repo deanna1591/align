@@ -6,7 +6,7 @@ import { Plus, X, Trash2 } from 'lucide-react';
 const palette = {
   bg: '#FFFFFF',
   bgRaised: '#FAFAFA',
-  ink: '#1B1813',
+  ink: '#1A1A1A',
   ink2: '#5C5448',
   ink3: '#9A917F',
   border: '#EAEAEA',

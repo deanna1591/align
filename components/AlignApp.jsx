@@ -5,7 +5,7 @@ import {
   Check, X, Plus, ChevronLeft, ChevronRight, Sparkles, Brain,
   Play, Pause, Flame, Sunrise, Minimize2, CircleDot, MoreHorizontal,
   RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle, Settings,
-  CalendarDays, ListTodo,
+  CalendarDays, ListTodo, Type,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 import SettingsDrawer from './SettingsDrawer';
@@ -38,7 +38,7 @@ const fmtTime = (s) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 const palette = {
   bg: '#FFFFFF',
   bgRaised: '#FAFAFA',
-  ink: '#1B1813',
+  ink: '#1A1A1A',
   ink2: '#5C5448',
   ink3: '#9A917F',
   border: '#EAEAEA',
@@ -54,6 +54,9 @@ const palette = {
   eventPersonalDot: '#C8717F',
   eventWorkBg: '#E5EDF4',
   eventWorkDot: '#6B7F8D',
+  // Subtle elevation — neutral, not warm-tinted.
+  softShadow: '0 1px 14px rgba(0, 0, 0, 0.04)',
+  softShadowStrong: '0 4px 24px rgba(0, 0, 0, 0.06)',
 };
 
 // ============================================================
@@ -448,7 +451,11 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
 
   return (
     <div data-date={dateKey(date)} className={containerClass}
-      style={{ background: dropping ? palette.accentSoft : 'transparent', opacity: past && !today ? 0.65 : 1 }}
+      style={{
+        background: dropping ? palette.accentSoft : 'transparent',
+        opacity: past && !today ? 0.65 : 1,
+        boxShadow: today && !dropping ? palette.softShadow : 'none',
+      }}
       onDragOver={(e) => { e.preventDefault(); onDragOver(dateKey(date)); }}
       onDrop={(e) => { e.preventDefault(); onDrop(dateKey(date)); }}>
       {!hideDateHeader && (
@@ -885,6 +892,26 @@ export default function AlignApp() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list' | 'focus'
   // Day shown in the "focus" view's top block. Strip below shows focusDay+1..+4.
   const [focusDay, setFocusDay] = useState(today0());
+  // Text size preference. Scales document root font-size; nearly all UI uses rem so this propagates.
+  // 'default' = no override; 'large' = 112.5%; 'xlarge' = 125%. Persisted in localStorage.
+  const [textScale, setTextScale] = useState('default');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('align_text_scale');
+    if (stored === 'large' || stored === 'xlarge' || stored === 'default') {
+      setTextScale(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const html = document.documentElement;
+    if (textScale === 'large') html.style.fontSize = '112.5%';
+    else if (textScale === 'xlarge') html.style.fontSize = '125%';
+    else html.style.fontSize = '';
+    try { localStorage.setItem('align_text_scale', textScale); } catch {}
+  }, [textScale]);
   const [events, setEvents] = useState([]);
   const [actionMenuTask, setActionMenuTask] = useState(null); // { task, dKey }
   const [mobileTab, setMobileTab] = useState('week'); // 'week' | 'lists'
@@ -1085,18 +1112,15 @@ export default function AlignApp() {
               fontVariationSettings: "'SOFT' 100, 'opsz' 144",
             }}>align</h1>
             <span className="hidden sm:inline" style={{
-              fontFamily: 'Inter Tight, sans-serif', fontSize: '0.72rem', fontWeight: 500,
-              letterSpacing: '0.16em', textTransform: 'uppercase', color: palette.ink3,
-            }}>{fmtFullDate(today0())}</span>
+              fontFamily: 'Fraunces, serif',
+              fontSize: '1.05rem',
+              fontStyle: 'italic',
+              color: palette.ink3,
+              fontVariationSettings: "'opsz' 144",
+              letterSpacing: 0,
+            }}>{today0().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* View mode toggle: grid → list → focus → grid */}
-            <button onClick={() => setViewMode(v => v === 'grid' ? 'list' : v === 'list' ? 'focus' : 'grid')}
-              className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
-              style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
-              title={viewMode === 'grid' ? 'Switch to list view' : viewMode === 'list' ? 'Switch to focus view' : 'Switch to grid view'}>
-              {viewMode === 'grid' ? <LayoutList size={14} /> : viewMode === 'list' ? <CalendarDays size={14} /> : <LayoutGrid size={14} />}
-            </button>
             <button onClick={() => setBrainOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Brain dump (B)"><Brain size={14} /></button>
             <button onClick={() => setClosureOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
@@ -1119,6 +1143,13 @@ export default function AlignApp() {
               className="p-1.5 rounded transition-colors hover:bg-black/[0.04]" style={{ color: palette.ink2 }}><ChevronRight size={16} /></button>
             <button onClick={() => setWeekStart(startOfWeek(today0()))} className="px-3 py-1 rounded transition-colors hover:bg-black/[0.04]"
               style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink2, fontWeight: 500 }}>This week</button>
+            {/* View mode toggle: grid → list → focus → grid */}
+            <button onClick={() => setViewMode(v => v === 'grid' ? 'list' : v === 'list' ? 'focus' : 'grid')}
+              className="p-1.5 rounded transition-colors hover:bg-black/[0.04]"
+              style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
+              title={viewMode === 'grid' ? 'Switch to list view' : viewMode === 'list' ? 'Switch to focus view' : 'Switch to grid view'}>
+              {viewMode === 'grid' ? <LayoutList size={14} /> : viewMode === 'list' ? <CalendarDays size={14} /> : <LayoutGrid size={14} />}
+            </button>
           </div>
           <div className="hidden md:flex items-center gap-2" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3 }}>
             <Command size={11} /> ⌘K capture · B brain · Esc close
@@ -1170,14 +1201,15 @@ export default function AlignApp() {
                   {isToday(focusDay) && (
                     <span style={{
                       fontFamily: 'Inter Tight, sans-serif',
-                      fontSize: '0.65rem',
+                      fontSize: '0.7rem',
                       fontWeight: 600,
-                      letterSpacing: '0.18em',
+                      letterSpacing: '0.22em',
                       textTransform: 'uppercase',
                       color: palette.accent,
-                      padding: '2px 8px',
-                      borderRadius: 10,
+                      padding: '4px 14px',
+                      borderRadius: 999,
                       background: palette.accentSoft,
+                      border: `1px solid ${palette.accent}30`,
                     }}>Today</span>
                   )}
                   {!isToday(focusDay) && (
@@ -1208,7 +1240,11 @@ export default function AlignApp() {
               </div>
               <div
                 className="rounded-lg px-4 py-4"
-                style={{ background: palette.bg, border: `1px solid ${palette.borderSoft}` }}
+                style={{
+                  background: palette.bg,
+                  border: `1px solid ${isToday(focusDay) ? palette.accent + '20' : palette.borderSoft}`,
+                  boxShadow: palette.softShadowStrong,
+                }}
               >
                 <DayColumn
                   date={focusDay}
@@ -1268,11 +1304,12 @@ export default function AlignApp() {
                     <button
                       key={dKey}
                       onClick={() => setFocusDay(d)}
-                      className="text-left p-3 rounded transition-colors hover:bg-black/[0.02]"
+                      className="text-left p-3 rounded transition-all duration-200 hover:-translate-y-0.5"
                       style={{
                         background: palette.bg,
                         border: `1px solid ${palette.borderSoft}`,
                         minHeight: 120,
+                        boxShadow: palette.softShadow,
                       }}
                       title={`Focus on ${fmtDay(d)} ${fmtDate(d)}`}
                     >
@@ -1537,7 +1574,7 @@ export default function AlignApp() {
         onComplete={(id) => focusTask && s.toggleTask(focusTask.dKey, id)}
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} />
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
       <QuickCaptureDrawer
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
