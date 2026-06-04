@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Mic, MicOff, Send, Brain, Calendar, ExternalLink } from 'lucide-react';
+import { X, Mic, MicOff, Send, Brain } from 'lucide-react';
 
 const palette = {
   bg: '#FFFFFF',
@@ -14,8 +14,6 @@ const palette = {
   accent: '#7CA481',
   accentSoft: 'rgba(124,164,129,0.10)',
   warn: '#C9824A',
-  errInk: '#8C3A2A',
-  errBg: '#FBE9E5',
 };
 
 function getSpeechRecognition() {
@@ -23,23 +21,11 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-function localToday() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateEvent }) {
+export default function QuickCaptureDrawer({ open, onClose, onCapture }) {
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
   const [interimText, setInterimText] = useState('');
-  // Status of the smart submit flow.
-  //   null            — idle
-  //   { kind: 'processing', message }
-  //   { kind: 'success', message, link? }
-  //   { kind: 'error', message }
-  const [status, setStatus] = useState(null);
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
   const speechSupported = useRef(false);
@@ -53,12 +39,10 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
       setText('');
       setInterimText('');
       setError(null);
-      setStatus(null);
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       stopListening();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const stopListening = () => {
@@ -124,83 +108,13 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
     }
   };
 
-  const friendlyDate = (dateStr) => {
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  };
-
-  // Submit flow:
-  //   1. Stop listening, freeze input.
-  //   2. Send text to /api/parse-task (Claude).
-  //   3. If parsed as event → onCreateEvent(parsed) (creates Google event + Align task).
-  //      Else → onCapture(text) (brain dump fallback).
-  //   4. Show success toast briefly, then auto-close.
-  //   5. On error, stay open with red message so user can fix or fall back.
   const submit = async () => {
     const value = text.trim();
     if (!value) return;
-    if (status?.kind === 'processing') return; // de-dupe double-submit
-
-    stopListening();
-    setStatus({ kind: 'processing', message: 'Reading your note…' });
-
-    let parsed = null;
-    try {
-      const tz = typeof Intl !== 'undefined'
-        ? Intl.DateTimeFormat().resolvedOptions().timeZone
-        : 'UTC';
-      const res = await fetch('/api/parse-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: value, user_timezone: tz, current_date: localToday() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        parsed = data.parsed;
-      }
-    } catch (err) {
-      console.error('[Align] parse-task error:', err);
-      // fall through — treat as brain dump
-    }
-
-    if (parsed?.is_event && parsed.date && typeof onCreateEvent === 'function') {
-      try {
-        setStatus({ kind: 'processing', message: 'Adding to your calendar…' });
-        const result = await onCreateEvent(parsed);
-        const calLabel = result?.label || 'Google';
-        setStatus({
-          kind: 'success',
-          message: `Added to ${calLabel} calendar · ${friendlyDate(parsed.date)}`,
-          link: result?.html_link,
-        });
-        setTimeout(() => {
-          setText('');
-          setInterimText('');
-          setStatus(null);
-          onClose();
-        }, 1600);
-      } catch (err) {
-        console.error('[Align] create-event error:', err);
-        setStatus({
-          kind: 'error',
-          message: `Couldn't create event: ${err.message || 'unknown'}. Saved to brain dump instead.`,
-        });
-        try { await onCapture(value); } catch {}
-      }
-    } else {
-      try {
-        await onCapture(value);
-        setStatus({ kind: 'success', message: 'Captured to brain dump' });
-        setTimeout(() => {
-          setText('');
-          setInterimText('');
-          setStatus(null);
-          onClose();
-        }, 900);
-      } catch (err) {
-        setStatus({ kind: 'error', message: `Save failed: ${err.message || 'unknown'}` });
-      }
-    }
+    await onCapture(value);
+    setText('');
+    setInterimText('');
+    onClose();
   };
 
   const handleKeyDown = (e) => {
@@ -211,8 +125,6 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
     if (e.key === 'Escape') onClose();
   };
 
-  const isBusy = status?.kind === 'processing';
-
   return (
     <>
       <div
@@ -222,7 +134,7 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
           opacity: open ? 1 : 0,
           pointerEvents: open ? 'auto' : 'none',
         }}
-        onClick={isBusy ? undefined : onClose}
+        onClick={onClose}
       />
       <div
         className="fixed bottom-0 left-0 right-0 z-50 transition-transform"
@@ -256,7 +168,7 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
                 Quick capture
               </h2>
             </div>
-            <button onClick={onClose} disabled={isBusy} className="p-1 hover:bg-black/[0.04] rounded" style={{ color: palette.ink2 }}>
+            <button onClick={onClose} className="p-1 hover:bg-black/[0.04] rounded" style={{ color: palette.ink2 }}>
               <X size={16} />
             </button>
           </div>
@@ -267,7 +179,6 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
               background: palette.bg,
               border: `1px solid ${listening ? palette.accent : palette.border}`,
               transition: 'border-color 0.2s',
-              opacity: isBusy ? 0.6 : 1,
             }}
           >
             <textarea
@@ -278,10 +189,9 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
                 setInterimText('');
               }}
               onKeyDown={handleKeyDown}
-              disabled={isBusy}
-              placeholder={listening ? 'Listening…' : 'Tell me what you have to do, e.g. "dinner with Sarah Tuesday 7pm"'}
+              placeholder={listening ? 'Listening...' : "What's on your mind?"}
               rows={3}
-              className="w-full bg-transparent outline-none text-[15px] leading-relaxed resize-none"
+              className="w-full bg-transparent outline-none text-[0.9375rem] leading-relaxed resize-none"
               style={{
                 fontFamily: 'Inter Tight, sans-serif',
                 color: interimText ? palette.ink3 : palette.ink,
@@ -289,44 +199,11 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
             />
           </div>
 
-          {/* Status banner: processing / success / error */}
-          {status && (
-            <div
-              className="mb-3 px-3 py-2 rounded flex items-center gap-2"
-              style={{
-                background:
-                  status.kind === 'success' ? palette.accentSoft :
-                  status.kind === 'error' ? palette.errBg :
-                  palette.bgRaised,
-                color:
-                  status.kind === 'success' ? palette.accent :
-                  status.kind === 'error' ? palette.errInk :
-                  palette.ink2,
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.78rem',
-                border: `1px solid ${status.kind === 'error' ? palette.errInk + '30' : palette.borderSoft}`,
-              }}
-            >
-              {status.kind === 'success' && <Calendar size={13} />}
-              <span style={{ flex: 1 }}>{status.message}</span>
-              {status.kind === 'success' && status.link && (
-                <a
-                  href={status.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: palette.accent, textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: 3 }}
-                >
-                  View <ExternalLink size={10} />
-                </a>
-              )}
-            </div>
-          )}
-
           {error && (
             <p style={{
               fontFamily: 'Inter Tight, sans-serif',
               fontSize: '0.75rem',
-              color: palette.errInk,
+              color: '#8C3A2A',
               marginBottom: 10,
             }}>{error}</p>
           )}
@@ -334,7 +211,7 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={listening ? stopListening : startListening}
-              disabled={!speechSupported.current || isBusy}
+              disabled={!speechSupported.current}
               className="flex items-center gap-2 px-4 py-2 rounded-full transition-all"
               style={{
                 background: listening ? palette.accent : 'transparent',
@@ -343,11 +220,19 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
                 fontFamily: 'Inter Tight, sans-serif',
                 fontSize: '0.8rem',
                 fontWeight: 500,
-                opacity: speechSupported.current && !isBusy ? 1 : 0.4,
-                cursor: speechSupported.current && !isBusy ? 'pointer' : 'not-allowed',
+                opacity: speechSupported.current ? 1 : 0.4,
+                cursor: speechSupported.current ? 'pointer' : 'not-allowed',
               }}
             >
-              {listening ? (<><MicOff size={13} /> Stop</>) : (<><Mic size={13} /> {speechSupported.current ? 'Voice' : 'No mic'}</>)}
+              {listening ? (
+                <>
+                  <MicOff size={13} /> Stop
+                </>
+              ) : (
+                <>
+                  <Mic size={13} /> {speechSupported.current ? 'Voice' : 'No mic'}
+                </>
+              )}
             </button>
 
             <div className="flex items-center gap-2" style={{
@@ -366,19 +251,19 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
 
             <button
               onClick={submit}
-              disabled={!text.trim() || isBusy}
+              disabled={!text.trim()}
               className="flex items-center gap-2 px-5 py-2 rounded-full transition-all"
               style={{
-                background: text.trim() && !isBusy ? palette.accent : palette.border,
-                color: text.trim() && !isBusy ? 'white' : palette.ink3,
+                background: text.trim() ? palette.accent : palette.border,
+                color: text.trim() ? 'white' : palette.ink3,
                 border: 'none',
                 fontFamily: 'Inter Tight, sans-serif',
                 fontSize: '0.85rem',
                 fontWeight: 500,
-                cursor: text.trim() && !isBusy ? 'pointer' : 'not-allowed',
+                cursor: text.trim() ? 'pointer' : 'not-allowed',
               }}
             >
-              <Send size={13} /> {isBusy ? 'Working…' : 'Save'}
+              <Send size={13} /> Save
             </button>
           </div>
         </div>

@@ -382,11 +382,11 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
         {editing ? (
           <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onBlur={saveEdit}
             onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { setValue(task.text); setEditing(false); } }}
-            className="flex-1 bg-transparent outline-none text-[14px] leading-snug"
+            className="flex-1 bg-transparent outline-none text-[0.875rem] leading-snug"
             style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
         ) : (
           <div onClick={handleBodyClick}
-            className="flex-1 text-[14px] leading-snug cursor-text break-words select-none"
+            className="flex-1 text-[0.875rem] leading-snug cursor-text break-words select-none"
             style={{
               fontFamily: 'Inter Tight, sans-serif',
               color: task.completed ? palette.ink3 : palette.ink,
@@ -506,7 +506,7 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
                   <div className="flex-1 min-w-0">
                     <div style={{
                       fontFamily: 'Inter Tight, sans-serif',
-                      fontSize: '12px',
+                      fontSize: '0.75rem',
                       fontWeight: 500,
                       color: palette.ink,
                       letterSpacing: '-0.005em',
@@ -518,7 +518,7 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
                     </div>
                     <div style={{
                       fontFamily: 'Inter Tight, sans-serif',
-                      fontSize: '10px',
+                      fontSize: '0.625rem',
                       color: palette.ink3,
                       letterSpacing: '0.02em',
                     }}>
@@ -552,7 +552,7 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
         ))}
         <form onSubmit={submit} className="pt-1">
           <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="+ add"
-            className="w-full bg-transparent outline-none text-[13px] py-1"
+            className="w-full bg-transparent outline-none text-[0.8125rem] py-1"
             style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink, letterSpacing: '-0.005em' }} />
         </form>
       </div>
@@ -706,7 +706,7 @@ function BrainDump({ open, onClose, items, onAdd, onDelete, onPromote }) {
           <div className="flex items-center gap-2 px-3 py-2 rounded" style={{ background: palette.bg, border: `1px solid ${palette.borderSoft}` }}>
             <Plus size={13} style={{ color: palette.ink3 }} />
             <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder="capture anything..."
-              className="flex-1 bg-transparent outline-none text-[14px]"
+              className="flex-1 bg-transparent outline-none text-[0.875rem]"
               style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
           </div>
           <div className="mt-2 flex items-center gap-2" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3 }}>
@@ -727,9 +727,9 @@ function BrainDump({ open, onClose, items, onAdd, onDelete, onPromote }) {
               {items.map(item => (
                 <li key={item.id} className="group flex items-start gap-2 py-1">
                   <span className="mt-2 w-1 h-1 rounded-full flex-shrink-0" style={{ background: palette.ink3 }} />
-                  <div className="flex-1 text-[14px] leading-snug" style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }}>{item.text}</div>
+                  <div className="flex-1 text-[0.875rem] leading-snug" style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }}>{item.text}</div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onPromote(item.id)} className="text-[10px] px-2 py-0.5 rounded transition-colors"
+                    <button onClick={() => onPromote(item.id)} className="text-[0.625rem] px-2 py-0.5 rounded transition-colors"
                       style={{ color: palette.accent, fontFamily: 'Inter Tight, sans-serif', border: `1px solid ${palette.accent}`, fontWeight: 500 }} title="Move to today">→ today</button>
                     <button onClick={() => onDelete(item.id)} style={{ color: palette.ink3 }}><X size={12} /></button>
                   </div>
@@ -806,7 +806,7 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
         <div className="mt-12 w-full">
           <label style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2 }}>Working notes</label>
           <textarea value={notes} onChange={(e) => handleNotesChange(e.target.value)} placeholder="Thinking out loud..." rows={6}
-            className="mt-2 w-full bg-transparent outline-none text-[15px] leading-relaxed resize-none"
+            className="mt-2 w-full bg-transparent outline-none text-[0.9375rem] leading-relaxed resize-none"
             style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink, borderBottom: `1px solid ${palette.borderSoft}`, paddingBottom: 12 }} />
         </div>
         <div className="mt-10 flex items-center gap-3 flex-wrap justify-center">
