@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Send, Brain, Calendar, ExternalLink, ArrowUpRight } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Mic, MicOff, Send, Calendar, ExternalLink, ArrowUpRight, ListTodo, X, Trash2, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase-client';
 
 const palette = {
@@ -43,6 +43,10 @@ export default function CapturePage({ userId }) {
   const [interimText, setInterimText] = useState('');
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
+  const [brainItems, setBrainItems] = useState([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState(null);
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
   const speechSupported = useRef(false);
@@ -51,9 +55,31 @@ export default function CapturePage({ userId }) {
   useEffect(() => {
     speechSupported.current = !!getSpeechRecognition();
     supabase.current = createClient();
-    // Auto-focus the input on open. Slight delay so iOS Safari respects it.
     setTimeout(() => inputRef.current?.focus(), 200);
   }, []);
+
+  const loadBrainDump = useCallback(async () => {
+    if (!supabase.current) return;
+    setListLoading(true);
+    setListError(null);
+    try {
+      const { data, error: err } = await supabase.current
+        .from('brain_dump')
+        .select('id, text, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (err) throw err;
+      setBrainItems(data || []);
+    } catch (e) {
+      setListError(e.message || 'Could not load items');
+    } finally {
+      setListLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (listOpen) loadBrainDump();
+  }, [listOpen, loadBrainDump]);
 
   const stopListening = () => {
     if (recognitionRef.current) {
@@ -104,11 +130,6 @@ export default function CapturePage({ userId }) {
     }
   };
 
-  // Submit flow:
-  //   1. Send text to /api/parse-task.
-  //   2. If parsed as event → POST /api/google/create-event.
-  //      Else → direct supabase insert into brain_dump (same as main app's addBrain).
-  //   3. Show status, then reset the input so user can capture again right away.
   const submit = async () => {
     const value = text.trim();
     if (!value) return;
@@ -165,17 +186,14 @@ export default function CapturePage({ userId }) {
         });
         setText('');
         setInterimText('');
-        // Status stays visible until next keystroke or 4s timeout.
         setTimeout(() => setStatus(s => (s?.kind === 'success-event' ? null : s)), 4000);
         return;
       } catch (err) {
         console.error('[Capture] event create error:', err);
-        // Fall through to brain dump so the text isn't lost.
         setStatus({ kind: 'processing', message: 'Saving to brain dump instead…' });
       }
     }
 
-    // Brain dump fallback — direct Supabase insert.
     try {
       const id = newId('b');
       const { error: insertErr } = await supabase.current
@@ -199,8 +217,229 @@ export default function CapturePage({ userId }) {
     }
   };
 
+  // Optimistic delete — remove from local list first, restore if it fails.
+  const deleteBrainItem = async (id) => {
+    const prevItems = brainItems;
+    setBrainItems(items => items.filter(i => i.id !== id));
+    try {
+      const { error: err } = await supabase.current
+        .from('brain_dump')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (err) throw err;
+    } catch (e) {
+      setBrainItems(prevItems);
+      setListError(e.message || 'Could not delete');
+    }
+  };
+
+  // "Send to today" — create a task for today and remove the brain dump item.
+  const promoteBrainItem = async (item) => {
+    const prevItems = brainItems;
+    setBrainItems(items => items.filter(i => i.id !== item.id));
+    try {
+      const taskId = newId('t');
+      const dateKey = localToday();
+      const { error: taskErr } = await supabase.current
+        .from('tasks')
+        .insert({
+          id: taskId,
+          user_id: userId,
+          date: dateKey,
+          text: item.text,
+          completed: false,
+        });
+      if (taskErr) throw taskErr;
+      const { error: delErr } = await supabase.current
+        .from('brain_dump')
+        .delete()
+        .eq('id', item.id)
+        .eq('user_id', userId);
+      if (delErr) console.warn('[Capture] task created but brain item not deleted:', delErr);
+    } catch (e) {
+      setBrainItems(prevItems);
+      setListError(e.message || 'Could not move to today');
+    }
+  };
+
   const isBusy = status?.kind === 'processing';
 
+  // ============================================================
+  //  BRAIN DUMP LIST VIEW
+  // ============================================================
+  if (listOpen) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: palette.bg,
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'Inter Tight, sans-serif',
+        color: palette.ink,
+      }}>
+        <header style={{
+          padding: '20px 22px 14px',
+          borderBottom: `1px solid ${palette.borderSoft}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <h1 style={{
+              fontFamily: 'Fraunces, serif',
+              fontSize: '1.5rem',
+              fontWeight: 400,
+              letterSpacing: '-0.03em',
+              margin: 0,
+              lineHeight: 1,
+              fontVariationSettings: "'SOFT' 100, 'opsz' 144",
+            }}>brain dump</h1>
+            <span style={{
+              fontFamily: 'Fraunces, serif',
+              fontStyle: 'italic',
+              fontSize: '0.78rem',
+              color: palette.ink3,
+            }}>{brainItems.length} {brainItems.length === 1 ? 'item' : 'items'}</span>
+          </div>
+          <button
+            onClick={() => setListOpen(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: palette.ink2,
+              padding: 8,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+            aria-label="Close brain dump list"
+          >
+            <X size={20} />
+          </button>
+        </header>
+
+        <main style={{ flex: 1, overflow: 'auto', padding: '8px 12px 100px' }}>
+          {listLoading && (
+            <p style={{
+              fontFamily: 'Fraunces, serif',
+              fontStyle: 'italic',
+              fontSize: '0.9rem',
+              color: palette.ink3,
+              padding: 20,
+              textAlign: 'center',
+            }}>Loading…</p>
+          )}
+          {!listLoading && brainItems.length === 0 && !listError && (
+            <p style={{
+              fontFamily: 'Fraunces, serif',
+              fontStyle: 'italic',
+              fontSize: '0.95rem',
+              color: palette.ink3,
+              padding: 32,
+              textAlign: 'center',
+              lineHeight: 1.5,
+            }}>Nothing here yet.<br/>Capture a thought and it'll land here.</p>
+          )}
+          {listError && (
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: palette.errBg,
+              color: palette.errInk,
+              fontSize: '0.82rem',
+              margin: 10,
+            }}>{listError}</div>
+          )}
+          {!listLoading && brainItems.map(item => (
+            <div
+              key={item.id}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                padding: '12px 10px',
+                borderBottom: `1px solid ${palette.borderSoft}`,
+              }}
+            >
+              <span style={{
+                flex: 1,
+                fontSize: '0.95rem',
+                lineHeight: 1.4,
+                color: palette.ink,
+                wordBreak: 'break-word',
+              }}>{item.text}</span>
+              <button
+                onClick={() => promoteBrainItem(item)}
+                title="Send to today's tasks"
+                aria-label="Send to today's tasks"
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${palette.border}`,
+                  borderRadius: 6,
+                  color: palette.accent,
+                  padding: '6px 8px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  touchAction: 'manipulation',
+                }}
+              >
+                <ArrowRight size={14} />
+              </button>
+              <button
+                onClick={() => deleteBrainItem(item.id)}
+                title="Delete"
+                aria-label="Delete item"
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${palette.border}`,
+                  borderRadius: 6,
+                  color: palette.ink3,
+                  padding: '6px 8px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  touchAction: 'manipulation',
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </main>
+
+        <footer style={{
+          padding: '14px 22px calc(20px + env(safe-area-inset-bottom))',
+          borderTop: `1px solid ${palette.borderSoft}`,
+          background: palette.bgRaised,
+        }}>
+          <button
+            onClick={() => setListOpen(false)}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: 999,
+              border: 'none',
+              background: palette.accent,
+              color: 'white',
+              fontFamily: 'Inter Tight, sans-serif',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+            }}
+          >Back to capture</button>
+        </footer>
+      </div>
+    );
+  }
+
+  // ============================================================
+  //  CAPTURE VIEW
+  // ============================================================
   return (
     <div style={{
       minHeight: '100vh',
@@ -210,7 +449,6 @@ export default function CapturePage({ userId }) {
       fontFamily: 'Inter Tight, sans-serif',
       color: palette.ink,
     }}>
-      {/* Slim header */}
       <header style={{
         padding: '20px 22px 14px',
         borderBottom: `1px solid ${palette.borderSoft}`,
@@ -235,25 +473,48 @@ export default function CapturePage({ userId }) {
             color: palette.ink3,
           }}>capture</span>
         </div>
-        <a
-          href="/"
-          style={{
-            color: palette.ink3,
-            fontSize: '0.7rem',
-            fontWeight: 500,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          Full Align <ArrowUpRight size={11} />
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => setListOpen(true)}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${palette.border}`,
+              borderRadius: 6,
+              color: palette.ink2,
+              padding: '6px 10px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              touchAction: 'manipulation',
+            }}
+            title="Brain dump"
+            aria-label="Open brain dump list"
+          >
+            <ListTodo size={14} />
+            <span style={{ letterSpacing: '0.04em' }}>Dump</span>
+          </button>
+          <a
+            href="/"
+            style={{
+              color: palette.ink3,
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            Full <ArrowUpRight size={11} />
+          </a>
+        </div>
       </header>
 
-      {/* Capture area — text input grows to fill */}
       <main style={{ flex: 1, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <textarea
           ref={inputRef}
@@ -281,7 +542,6 @@ export default function CapturePage({ userId }) {
           }}
         />
 
-        {/* Status banner */}
         {status && (
           <div
             style={{
@@ -322,7 +582,6 @@ export default function CapturePage({ userId }) {
         )}
       </main>
 
-      {/* Action row pinned bottom */}
       <footer style={{
         padding: '14px 22px calc(20px + env(safe-area-inset-bottom))',
         borderTop: `1px solid ${palette.borderSoft}`,
