@@ -8,6 +8,7 @@ import {
   CalendarDays, ListTodo, Type,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
+import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
 import Lists from './Lists';
@@ -572,13 +573,33 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
   const completedToday = todayTasks.filter(t => t.completed).length;
   const totalToday = todayTasks.length;
   const pct = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
+  // "You cleared today" milestone — only meaningful when there were actual tasks to clear.
+  const allDone = totalToday > 0 && completedToday === totalToday;
+  // Get the completion line — stable per day so refreshing doesn't reshuffle.
+  const completionQuote = useMemo(() => {
+    if (!allDone) return null;
+    const d = new Date();
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return getCompletionQuote(key);
+  }, [allDone]);
 
   return (
     <div className="sticky top-0 z-20 backdrop-blur-md"
       style={{ background: 'rgba(255,255,255,0.85)', borderBottom: `1px solid ${palette.borderSoft}` }}>
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 md:py-3">
-        {/* MOBILE: single compact row with progress · streak */}
+        {/* MOBILE: single compact row with progress · streak (or completion line) */}
         <div className="flex md:hidden items-center justify-between gap-3">
+          {allDone && completionQuote ? (
+            <div style={{
+              fontFamily: 'Fraunces, serif',
+              fontStyle: 'italic',
+              fontSize: '0.82rem',
+              color: palette.accent,
+              fontVariationSettings: "'opsz' 144",
+            }}>
+              {completionQuote.line} <span style={{ color: palette.ink3 }}>{completionQuote.sub}</span>
+            </div>
+          ) : (
           <div className="flex items-center gap-2 min-w-0">
             <Target size={11} style={{ color: palette.accent }} className="flex-shrink-0" />
             <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink2, fontWeight: 500 }}>
@@ -592,6 +613,7 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
               {stats.streak}
             </span>
           </div>
+          )}
         </div>
 
         {/* DESKTOP: full original layout */}
@@ -602,7 +624,16 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
               <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2 }}>Today's Three</span>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              {top3.length === 0 ? (
+              {allDone && completionQuote ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '1.05rem', color: palette.accent, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}>
+                    {completionQuote.line}
+                  </span>
+                  <span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.82rem', color: palette.ink3, lineHeight: 1.3, fontVariationSettings: "'opsz' 144" }}>
+                    {completionQuote.sub}
+                  </span>
+                </div>
+              ) : top3.length === 0 ? (
                 <span style={{ fontFamily: 'Fraunces, serif', fontSize: '0.95rem', color: palette.ink3, fontStyle: 'italic' }}>Nothing pinned for today.</span>
               ) : (top3.map((t, i) => (
                 <button key={t.id} onClick={() => onSelectFocus(t)}
@@ -1104,21 +1135,52 @@ export default function AlignApp() {
         currentFocus={focusTask?.task} />
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
-        <header className="flex items-center justify-between mb-6 md:mb-8 flex-wrap gap-3 md:gap-4">
-          <div className="flex items-baseline gap-4">
-            <h1 style={{
-              fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.85rem, 5vw, 2.5rem)',
-              fontWeight: 400, color: palette.ink, letterSpacing: '-0.035em', lineHeight: 1,
-              fontVariationSettings: "'SOFT' 100, 'opsz' 144",
-            }}>align</h1>
-            <span className="hidden sm:inline" style={{
-              fontFamily: 'Fraunces, serif',
-              fontSize: '1.05rem',
-              fontStyle: 'italic',
-              color: palette.ink3,
-              fontVariationSettings: "'opsz' 144",
-              letterSpacing: 0,
-            }}>{today0().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+        <header className="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-3 md:gap-4">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline gap-4">
+              <h1 style={{
+                fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.85rem, 5vw, 2.5rem)',
+                fontWeight: 400, color: palette.ink, letterSpacing: '-0.035em', lineHeight: 1,
+                fontVariationSettings: "'SOFT' 100, 'opsz' 144",
+              }}>align</h1>
+              <span className="hidden sm:inline" style={{
+                fontFamily: 'Fraunces, serif',
+                fontSize: '1.05rem',
+                fontStyle: 'italic',
+                color: palette.ink3,
+                fontVariationSettings: "'opsz' 144",
+                letterSpacing: 0,
+              }}>{today0().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+            </div>
+            {/* Daily quote — deterministic per day, from curated bank in lib/quotes.js */}
+            {(() => {
+              const q = getDailyQuote(todayKey);
+              return (
+                <p style={{
+                  fontFamily: 'Fraunces, serif',
+                  fontStyle: 'italic',
+                  fontSize: '0.92rem',
+                  color: palette.ink3,
+                  fontVariationSettings: "'opsz' 144",
+                  lineHeight: 1.4,
+                  maxWidth: 640,
+                  margin: 0,
+                }}>
+                  {q.text}
+                  {q.author && (
+                    <span style={{
+                      fontFamily: 'Inter Tight, sans-serif',
+                      fontStyle: 'normal',
+                      fontSize: '0.72rem',
+                      color: palette.ink3,
+                      marginLeft: 8,
+                      opacity: 0.75,
+                      whiteSpace: 'nowrap',
+                    }}>— {q.author}</span>
+                  )}
+                </p>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setBrainOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
