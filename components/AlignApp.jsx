@@ -1012,7 +1012,9 @@ export default function AlignApp() {
   }, [s.tasks]);
   const leftoverCount = leftoverGroups.reduce((n, g) => n + g.tasks.length, 0);
 
-  // Fetch calendar events for current week, refetch every 60 seconds while open
+  // Fetch calendar events for current week. Refetch every 20s while open, AND
+  // whenever the tab regains focus / becomes visible. The visibility refetch is
+  // what makes shortcut-created events appear instantly when you switch back.
   useEffect(() => {
     if (!s.user) return;
     let cancelled = false;
@@ -1029,8 +1031,17 @@ export default function AlignApp() {
       }
     };
     fetchEvents();
-    const interval = setInterval(fetchEvents, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const interval = setInterval(fetchEvents, 20_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchEvents(); };
+    const onFocus = () => fetchEvents();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [s.user, weekStart, days]);
 
   // Group events by date for fast lookup

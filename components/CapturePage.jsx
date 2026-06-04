@@ -81,6 +81,49 @@ export default function CapturePage({ userId }) {
     if (listOpen) loadBrainDump();
   }, [listOpen, loadBrainDump]);
 
+  // Realtime subscription — keep brainItems in sync with the DB without polling.
+  // Fires whenever any client (this device, shortcut, other devices) inserts or
+  // deletes a brain_dump row owned by this user. Requires brain_dump to be in
+  // the supabase_realtime publication.
+  useEffect(() => {
+    if (!supabase.current || !userId) return;
+    const channel = supabase.current
+      .channel(`brain_dump:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'brain_dump', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          setBrainItems(prev => {
+            if (prev.some(item => item.id === payload.new.id)) return prev;
+            return [
+              { id: payload.new.id, text: payload.new.text, created_at: payload.new.created_at },
+              ...prev,
+            ];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'brain_dump', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const id = payload.old?.id;
+          if (!id) return;
+          setBrainItems(prev => prev.filter(item => item.id !== id));
+        }
+      )
+      .subscribe();
+    return () => { supabase.current.removeChannel(channel); };
+  }, [userId]);
+
+  // Fallback: also refetch when the list opens or tab becomes visible.
+  // Protects against realtime publication being misconfigured.
+  useEffect(() => {
+    if (!listOpen) return;
+    const onVisible = () => { if (document.visibilityState === 'visible') loadBrainDump(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [listOpen, loadBrainDump]);
+
   const stopListening = () => {
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
