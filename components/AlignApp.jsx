@@ -439,7 +439,7 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
 // ============================================================
 function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus,
   dragState, onDragOver, onDrop, onDragTaskStart, onDragTaskEnd, topThreeIds, inList, onOpenActionMenu,
-  lists, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList, hideDateHeader }) {
+  lists, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList, hideDateHeader, onDeleteEvent }) {
   const [input, setInput] = useState('');
   const today = isToday(date);
   const past = isPast(date);
@@ -486,12 +486,9 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
               const pillBg = isWork ? palette.eventWorkBg : isPersonal ? palette.eventPersonalBg : palette.accentSofter;
               const dotBg = isWork ? palette.eventWorkDot : isPersonal ? palette.eventPersonalDot : palette.accent;
               return (
-                <a
-                  key={`${ev.sourceEmail}-${ev.id}`}
-                  href={ev.htmlLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-2 px-2 py-1 rounded transition-opacity hover:opacity-100"
+                <div
+                  key={`${ev.sourceEmail}-${ev.calendarId}-${ev.id}`}
+                  className="group flex items-start gap-2 px-2 py-1 rounded transition-opacity"
                   style={{ opacity: 0.92, background: pillBg }}
                   title={ev.location ? `${ev.title} — ${ev.location}` : ev.title}
                 >
@@ -503,7 +500,13 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
                       background: dotBg,
                     }}
                   />
-                  <div className="flex-1 min-w-0">
+                  <a
+                    href={ev.htmlLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 min-w-0 hover:opacity-100"
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
                     <div style={{
                       fontFamily: 'Inter Tight, sans-serif',
                       fontSize: '0.75rem',
@@ -524,8 +527,19 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
                     }}>
                       {ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
                     </div>
-                  </div>
-                </a>
+                  </a>
+                  {onDeleteEvent && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteEvent(ev); }}
+                      className="md:opacity-0 md:group-hover:opacity-60 hover:opacity-100 transition-opacity flex-shrink-0 p-0.5 rounded"
+                      style={{ color: palette.ink2, opacity: 0.55 }}
+                      title="Delete event from Google Calendar"
+                      aria-label="Delete event"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
               );
             })}
             {tasks.length > 0 && <div className="h-px my-2" style={{ background: palette.borderSoft }} />}
@@ -926,6 +940,10 @@ export default function AlignApp() {
   // Text size preference. Scales document root font-size; nearly all UI uses rem so this propagates.
   // 'default' = no override; 'large' = 112.5%; 'xlarge' = 125%. Persisted in localStorage.
   const [textScale, setTextScale] = useState('default');
+  // Event being confirmed for deletion. Null when modal closed.
+  // Shape: { id, title, sourceEmail, calendarId, start, allDay }
+  const [eventToDelete, setEventToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1002,7 +1020,7 @@ export default function AlignApp() {
       try {
         const start = dateKey(days[0]);
         const end = dateKey(days[6]);
-        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`);
+        const res = await fetch(`/api/google/events?start=${start}&end=${end}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data.events) setEvents(data.events);
@@ -1326,6 +1344,7 @@ export default function AlignApp() {
                   onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                   topThreeIds={dateKey(focusDay) === todayKey ? topThreeIds : []}
                   inList={true}
+                  onDeleteEvent={setEventToDelete}
                 />
               </div>
             </div>
@@ -1461,7 +1480,7 @@ export default function AlignApp() {
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
                 onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                 topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
-                inList={true} />
+                inList={true} onDeleteEvent={setEventToDelete} />
             ))}
           </div>
         ) : (
@@ -1484,7 +1503,7 @@ export default function AlignApp() {
                 dragState={dragState} onDragOver={onDragOverDay} onDrop={onDropDay}
                 onDragTaskStart={onDragTaskStart} onDragTaskEnd={onDragTaskEnd}
                 topThreeIds={dateKey(d) === todayKey ? topThreeIds : []}
-                inList={false} />
+                inList={false} onDeleteEvent={setEventToDelete} />
             ))}
           </div>
         )}
@@ -1604,6 +1623,7 @@ export default function AlignApp() {
                   topThreeIds={[]}
                   inList={true}
                   hideDateHeader={true}
+                  onDeleteEvent={setEventToDelete}
                 />
               </div>
             </div>
@@ -1682,6 +1702,121 @@ export default function AlignApp() {
           onMoveToList={(listId) => { s.moveTaskToList(actionMenuTask.dKey, actionMenuTask.task.id, listId); setActionMenuTask(null); }}
           onDelete={() => { s.deleteTask(actionMenuTask.dKey, actionMenuTask.task.id); setActionMenuTask(null); }}
         />
+      )}
+
+      {/* DELETE EVENT MODAL — confirms deletion and propagates to Google Calendar. */}
+      {eventToDelete && (
+        <div
+          className="fixed inset-0 z-[55] flex items-center justify-center px-4"
+          style={{ background: 'rgba(27,24,19,0.35)' }}
+          onClick={() => !deleting && setEventToDelete(null)}
+        >
+          <div
+            className="w-full max-w-md p-6 rounded-lg"
+            style={{ background: palette.bg, border: `1px solid ${palette.border}`, boxShadow: '0 10px 40px rgba(0,0,0,0.12)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{
+              fontFamily: 'Fraunces, serif',
+              fontSize: '1.25rem',
+              fontWeight: 400,
+              color: palette.ink,
+              letterSpacing: '-0.01em',
+              marginBottom: 6,
+            }}>
+              Delete this event?
+            </h2>
+            <p style={{
+              fontFamily: 'Inter Tight, sans-serif',
+              fontSize: '0.78rem',
+              color: palette.ink3,
+              marginBottom: 16,
+              lineHeight: 1.5,
+            }}>
+              This will remove it from your <strong style={{ color: palette.ink2 }}>{eventToDelete.source || 'Google'}</strong> calendar. Can't be undone.
+            </p>
+            <div className="mb-5 p-3 rounded" style={{ background: palette.bgRaised, border: `1px solid ${palette.borderSoft}` }}>
+              <div style={{
+                fontFamily: 'Inter Tight, sans-serif',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                color: palette.ink,
+                marginBottom: 4,
+              }}>{eventToDelete.title}</div>
+              <div style={{
+                fontFamily: 'Inter Tight, sans-serif',
+                fontSize: '0.78rem',
+                color: palette.ink2,
+              }}>
+                {eventToDelete.allDay
+                  ? 'All day'
+                  : new Date(eventToDelete.start).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEventToDelete(null)}
+                disabled={deleting}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  color: palette.ink2,
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  border: `1px solid ${palette.border}`,
+                  padding: '0.625rem',
+                  borderRadius: '6px',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                }}
+              >Cancel</button>
+              <button
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    const res = await fetch('/api/google/delete-event', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        google_email: eventToDelete.sourceEmail,
+                        calendar_id: eventToDelete.calendarId,
+                        event_id: eventToDelete.id,
+                      }),
+                    });
+                    if (!res.ok) {
+                      const body = await res.json().catch(() => ({}));
+                      throw new Error(body.error || `HTTP ${res.status}`);
+                    }
+                    // Remove from local state immediately so UI updates without waiting for refetch.
+                    setEvents(prev => prev.filter(e =>
+                      !(e.id === eventToDelete.id && e.sourceEmail === eventToDelete.sourceEmail && e.calendarId === eventToDelete.calendarId)
+                    ));
+                    setEventToDelete(null);
+                  } catch (err) {
+                    console.error('[Align] delete event error:', err);
+                    alert(`Couldn't delete event: ${err.message}`);
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+                style={{
+                  flex: 1,
+                  background: '#8C3A2A',
+                  color: 'white',
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  padding: '0.625rem',
+                  borderRadius: '6px',
+                  cursor: deleting ? 'wait' : 'pointer',
+                  opacity: deleting ? 0.7 : 1,
+                }}
+              >{deleting ? 'Deleting…' : 'Delete event'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <button onClick={() => setBrainOpen(true)}
