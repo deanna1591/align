@@ -8,16 +8,12 @@ html, body {
 }
 
 /* Prevent iOS Safari from auto-zooming when focusing an input.
-   iOS zooms whenever an input's font-size renders below 16px — even when the
-   viewport meta says no-zoom. Using max() means:
-     - default (root = 16px): inputs render at 16px → no zoom
-     - large   (root = 18px): inputs render at 18px
-     - extra   (root = 20px): inputs render at 20px
-   The 16px floor protects against zoom triggering on small screens. */
-@media screen and (max-width: 768px) {
-  input,
-  textarea,
-  select {
-    font-size: max(16px, 1rem) !important;
-  }
+   iOS zooms whenever an input renders below 16px — even when the viewport
+   meta says no-zoom. Applied unconditionally (not behind a media query)
+   because iPad-landscape and larger-phone-landscape exceed 768px width
+   but still suffer from the same zoom behavior. */
+input,
+textarea,
+select {
+  font-size: max(16px, 1rem) !important;
 }

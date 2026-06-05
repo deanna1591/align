@@ -1012,9 +1012,10 @@ export default function AlignApp() {
   }, [s.tasks]);
   const leftoverCount = leftoverGroups.reduce((n, g) => n + g.tasks.length, 0);
 
-  // Fetch calendar events for current week. Refetch every 20s while open, AND
-  // whenever the tab regains focus / becomes visible. The visibility refetch is
-  // what makes shortcut-created events appear instantly when you switch back.
+  // Fetch calendar events for current week. Polls every 10s, refetches on tab
+  // focus/visibility, and exposes a manual refresh via the button in the nav row.
+  // `cache: 'no-store'` ensures the browser never serves a stale response.
+  const refetchEventsRef = useRef(null);
   useEffect(() => {
     if (!s.user) return;
     let cancelled = false;
@@ -1022,7 +1023,7 @@ export default function AlignApp() {
       try {
         const start = dateKey(days[0]);
         const end = dateKey(days[6]);
-        const res = await fetch(`/api/google/events?start=${start}&end=${end}`);
+        const res = await fetch(`/api/google/events?start=${start}&end=${end}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data.events) setEvents(data.events);
@@ -1030,8 +1031,9 @@ export default function AlignApp() {
         console.error('[Align] Events fetch error:', e);
       }
     };
+    refetchEventsRef.current = fetchEvents;
     fetchEvents();
-    const interval = setInterval(fetchEvents, 20_000);
+    const interval = setInterval(fetchEvents, 10_000);
     const onVisible = () => { if (document.visibilityState === 'visible') fetchEvents(); };
     const onFocus = () => fetchEvents();
     document.addEventListener('visibilitychange', onVisible);
@@ -1041,6 +1043,7 @@ export default function AlignApp() {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onFocus);
+      refetchEventsRef.current = null;
     };
   }, [s.user, weekStart, days]);
 
@@ -1240,6 +1243,13 @@ export default function AlignApp() {
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
               title={viewMode === 'grid' ? 'Switch to list view' : viewMode === 'list' ? 'Switch to focus view' : 'Switch to grid view'}>
               {viewMode === 'grid' ? <LayoutList size={14} /> : viewMode === 'list' ? <CalendarDays size={14} /> : <LayoutGrid size={14} />}
+            </button>
+            {/* Manual events refresh — pulls from Google Calendar immediately. */}
+            <button onClick={() => refetchEventsRef.current && refetchEventsRef.current()}
+              className="p-1.5 rounded transition-colors hover:bg-black/[0.04]"
+              style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
+              title="Refresh calendar events">
+              <RotateCcw size={14} />
             </button>
           </div>
           <div className="hidden md:flex items-center gap-2" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3 }}>
