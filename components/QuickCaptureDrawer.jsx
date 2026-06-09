@@ -21,10 +21,11 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-export default function QuickCaptureDrawer({ open, onClose, onCapture }) {
+export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateEvent }) {
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [interimText, setInterimText] = useState('');
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
@@ -110,11 +111,51 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture }) {
 
   const submit = async () => {
     const value = text.trim();
-    if (!value) return;
-    await onCapture(value);
-    setText('');
-    setInterimText('');
-    onClose();
+    if (!value || saving) return;
+    setSaving(true);
+    setError(null);
+
+    // Ask the parser whether this is a scheduled event or just a note.
+    const tz = typeof Intl !== 'undefined'
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : 'UTC';
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    let parsed = null;
+    try {
+      const res = await fetch('/api/parse-capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: value, today: todayStr, user_timezone: tz }),
+      });
+      if (res.ok) parsed = await res.json();
+    } catch {
+      // parser unreachable — fall through to note below
+    }
+
+    try {
+      if (parsed && parsed.type === 'event' && parsed.date && onCreateEvent) {
+        // Calendar event: AlignApp creates the Google event and drops a task on the day.
+        await onCreateEvent(parsed);
+      } else {
+        // Note / todo: goes to the brain dump.
+        await onCapture(value);
+      }
+      setText('');
+      setInterimText('');
+      setSaving(false);
+      onClose();
+    } catch (e) {
+      // Event creation failed (e.g. no write calendar / permission). Keep the
+      // text so nothing is lost and show why.
+      setSaving(false);
+      setError(
+        e?.message === 'no_write_capable_connection'
+          ? 'No calendar is set to write to. Open Settings and pick a write calendar.'
+          : `Couldn't add to calendar: ${e?.message || 'unknown error'}. Try again or save as a note.`
+      );
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -253,19 +294,19 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture }) {
 
             <button
               onClick={submit}
-              disabled={!text.trim()}
+              disabled={!text.trim() || saving}
               className="flex items-center gap-2 px-5 py-2 rounded-full transition-all"
               style={{
-                background: text.trim() ? palette.accent : palette.border,
-                color: text.trim() ? 'white' : palette.ink3,
+                background: text.trim() && !saving ? palette.accent : palette.border,
+                color: text.trim() && !saving ? 'white' : palette.ink3,
                 border: 'none',
                 fontFamily: 'Inter Tight, sans-serif',
                 fontSize: '0.85rem',
                 fontWeight: 500,
-                cursor: text.trim() ? 'pointer' : 'not-allowed',
+                cursor: text.trim() && !saving ? 'pointer' : 'not-allowed',
               }}
             >
-              <Send size={13} /> Save
+              <Send size={13} /> {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
