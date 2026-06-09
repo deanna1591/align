@@ -11,9 +11,9 @@ const CALENDAR_WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const palette = {
   bg: '#FFFFFF',
   bgRaised: '#FBF1FA',
-  ink: '#4A2E7A',
-  ink2: '#8B6FB8',
-  ink3: '#B49ED6',
+  ink: '#36215C',
+  ink2: '#6E5499',
+  ink3: '#9F88C9',
   border: '#B59BD8',
   borderSoft: '#ECE0F8',
   accent: '#FF5FB0',

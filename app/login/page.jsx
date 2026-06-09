@@ -46,9 +46,9 @@ export default function LoginPage() {
     padding: '0.7rem 0.85rem',
     fontFamily: 'Inter Tight, sans-serif',
     fontSize: '1rem',
-    color: '#4A2E7A',
+    color: '#36215C',
     background: '#FFFFFF',
-    border: '2px solid #4A2E7A',
+    border: '2px solid #36215C',
     borderRadius: '8px',
     outline: 'none',
     marginBottom: '0.7rem',
@@ -59,7 +59,7 @@ export default function LoginPage() {
     padding: '0.72rem 1rem',
     background: '#FF5FB0',
     color: 'white',
-    border: '2px solid #4A2E7A',
+    border: '2px solid #36215C',
     borderRadius: '9px',
     boxShadow: '2px 2px 0 rgba(91,62,142,0.28)',
     fontFamily: 'Inter Tight, sans-serif',
@@ -76,7 +76,7 @@ export default function LoginPage() {
     border: 'none',
     fontFamily: 'Inter Tight, sans-serif',
     fontSize: '0.82rem',
-    color: '#8B6FB8',
+    color: '#6E5499',
     cursor: 'pointer',
     textDecoration: 'underline',
   };
@@ -89,12 +89,12 @@ export default function LoginPage() {
     textAlign: 'center',
   };
 
-  const dot = (bg) => ({ width: 10, height: 10, borderRadius: 999, background: bg, border: '1.5px solid #4A2E7A' });
+  const dot = (bg) => ({ width: 10, height: 10, borderRadius: 999, background: bg, border: '1.5px solid #36215C' });
 
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#FEF7FC',
+      backgroundColor: '#FEFBFD',
       backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
       backgroundSize: '22px 22px',
       display: 'flex',
@@ -110,28 +110,28 @@ export default function LoginPage() {
         maxWidth: 360,
         width: '100%',
         background: '#FFFDF9',
-        border: '2px solid #4A2E7A',
+        border: '2px solid #36215C',
         borderRadius: 12,
         boxShadow: '4px 4px 0 rgba(91,62,142,0.20)',
         overflow: 'hidden',
       }}>
         {/* title bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#FFB3DE', borderBottom: '2px solid #4A2E7A' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#FFB3DE', borderBottom: '2px solid #36215C' }}>
           <span style={{ display: 'inline-flex', gap: 5 }}>
             <span style={dot('#FF6FB5')} /><span style={dot('#FCD93D')} /><span style={dot('#9B5CFF')} />
           </span>
-          <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#4A2E7A' }}>WELCOME.EXE</span>
+          <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#36215C' }}>WELCOME.EXE</span>
         </div>
 
         <div style={{ padding: '30px 26px 26px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, marginBottom: 6 }}>
-            <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '1.25rem', color: '#4A2E7A', lineHeight: 1 }}>align</span>
+            <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '1.25rem', color: '#36215C', lineHeight: 1 }}>align</span>
             <span style={{ color: '#FF5FB0', fontSize: '1.1rem' }}>✦</span>
           </div>
           <p style={{
             fontFamily: 'VT323, monospace',
             fontSize: '1.2rem',
-            color: '#8B6FB8',
+            color: '#6E5499',
             textAlign: 'center',
             letterSpacing: '0.03em',
             marginBottom: '1.9rem',
@@ -139,11 +139,11 @@ export default function LoginPage() {
 
           {sent ? (
             <div style={{ textAlign: 'center', padding: '1.25rem 0' }}>
-              <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.6rem', color: '#4A2E7A', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '0.4rem' }}>
+              <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.6rem', color: '#36215C', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '0.4rem' }}>
                 Check your email
               </p>
-              <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', color: '#8B6FB8' }}>
-                We sent a sign-in link to <strong style={{ color: '#4A2E7A' }}>{email}</strong>.
+              <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', color: '#6E5499' }}>
+                We sent a sign-in link to <strong style={{ color: '#36215C' }}>{email}</strong>.
               </p>
             </div>
           ) : mode === 'password' ? (

@@ -40,9 +40,9 @@ const fmtTime = (s) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 const palette = {
   bg: '#FFFFFF',
   bgRaised: '#FBF1FA',
-  ink: '#4A2E7A',
-  ink2: '#8B6FB8',
-  ink3: '#B49ED6',
+  ink: '#36215C',
+  ink2: '#6E5499',
+  ink3: '#9F88C9',
   border: '#B59BD8',
   borderSoft: '#ECE0F8',
   accent: '#FF5FB0',
@@ -120,6 +120,36 @@ const PIXEL = {
     '10011001',
     '01000010',
     '00111100',
+  ],
+  flower: [
+    '00100100',
+    '01100110',
+    '00111100',
+    '11111111',
+    '11111111',
+    '00111100',
+    '01100110',
+    '00100100',
+  ],
+  bolt: [
+    '00011100',
+    '00111000',
+    '01110000',
+    '11111100',
+    '00011100',
+    '00111000',
+    '01110000',
+    '11100000',
+  ],
+  diamond: [
+    '00011000',
+    '00111100',
+    '01111110',
+    '11111111',
+    '01111110',
+    '00111100',
+    '00011000',
+    '00000000',
   ],
 };
 
@@ -1097,13 +1127,16 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#FFB3DE', borderBottom: `2px solid ${palette.ink}` }}>
           <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#FF6FB5')} /><span style={dot('#FCD93D')} /><span style={dot('#9B5CFF')} /></span>
           <span style={barName}>To-do — {fmtDate(date)}</span>
-          <span style={{ fontFamily: 'VT323, monospace', fontSize: '1.05rem', color: palette.accent }}>★</span>
+          <PixelIcon name="heart" color={palette.accent} px={2} />
         </div>
         <div className="px-4 py-4">
           {leftover.length > 0 && (
-            <div className="mb-4" style={{ background: '#FFF6D6', border: '1.5px solid #E8C84A', borderRadius: 8, padding: '8px 10px' }}>
-              <div style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#9A6B00', marginBottom: 4 }}>↩ Leftover</div>
-              <div className="space-y-0.5">{leftover.map(renderTask)}</div>
+            <div className="mb-4" style={{ background: 'rgba(155,92,255,0.05)', border: '1px solid #E6DAF5', borderRadius: 8, padding: '8px 11px' }}>
+              <div style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: palette.ink3, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span>↩ leftover</span>
+                <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.62rem', fontWeight: 600, color: palette.ink3, background: 'rgba(155,92,255,0.10)', borderRadius: 999, padding: '0 6px' }}>{leftover.length}</span>
+              </div>
+              <div className="space-y-0.5" style={{ opacity: 0.72 }}>{leftover.map(renderTask)}</div>
             </div>
           )}
           <div className="space-y-0.5">{rest.map(renderTask)}</div>
@@ -1120,10 +1153,14 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}` }}>
           <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#9B5CFF')} /><span style={dot('#3FB8DE')} /></span>
           <span style={barName}>Calendar</span>
+          <PixelIcon name="cd" color="#9B5CFF" px={2} />
         </div>
         <div className="px-4 py-4">
           {events.length === 0 ? (
-            <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.05rem', color: palette.ink3 }}>Nothing on the calendar today.</p>
+            <div style={{ textAlign: 'center', padding: '14px 0' }}>
+              <PixelIcon name="cd" color="#C9B8E6" px={5} style={{ marginBottom: 10 }} />
+              <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.05rem', color: palette.ink3 }}>Nothing on the calendar today.</p>
+            </div>
           ) : (
             <div className="space-y-1.5">
               {events.map((ev) => {
@@ -1393,7 +1430,7 @@ export default function AlignApp() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#FEF7FC',
+      backgroundColor: '#FEFBFD',
       backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
       backgroundSize: '22px 22px',
     }}>
@@ -1839,25 +1876,16 @@ export default function AlignApp() {
         {/* Left over: incomplete tasks from previous days */}
         {leftoverCount > 0 && (
           <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
-            <div className="mt-10 pt-6" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
-              <div className="flex items-center gap-3 mb-4">
-                <RotateCcw size={14} style={{ color: palette.warm }} />
-                <h2 style={{
-                  fontFamily: 'VT323, monospace',
-                  fontWeight: 400,
-                  fontSize: '1.4rem',
-                  letterSpacing: '-0.01em',
-                  color: palette.ink,
-                }}>Left over</h2>
-                <span style={{
-                  fontFamily: 'Inter Tight, sans-serif',
-                  fontSize: '0.7rem',
-                  color: palette.ink3,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                }}>{leftoverCount}</span>
+            <div className="mt-10 max-w-[640px]" style={{ background: '#FFFDF9', border: '2px solid #C9B8E6', borderRadius: 10, boxShadow: '2px 2px 0 rgba(91,62,142,0.10)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: '#ECE0F8', borderBottom: '2px solid #C9B8E6' }}>
+                <span style={{ display: 'inline-flex', gap: 5 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: 999, background: '#D8C7F0', border: '1.5px solid #C9B8E6' }} />
+                  <span style={{ width: 9, height: 9, borderRadius: 999, background: '#E4DAF4', border: '1.5px solid #C9B8E6' }} />
+                </span>
+                <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink2 }}>Left_over</span>
+                <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.62rem', fontWeight: 600, color: palette.ink3, background: 'rgba(155,92,255,0.08)', borderRadius: 999, padding: '0 6px' }}>{leftoverCount}</span>
               </div>
-              <div className="max-w-[640px] space-y-5">
+              <div className="px-4 py-4 space-y-5" style={{ opacity: 0.82 }}>
                 {leftoverGroups.map(group => {
                   const d = new Date(group.dKey + 'T00:00:00');
                   const daysAgo = Math.round((today0() - d) / 86400000);
@@ -1906,27 +1934,18 @@ export default function AlignApp() {
         {/* Someday: tasks with no date — appears between the week grid and Lists */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
           {(s.tasks['someday'] || []).length > 0 || true ? (
-            <div className="mt-10 pt-6" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
-              <div className="flex items-center gap-3 mb-4">
-                <Sunrise size={14} style={{ color: palette.accent }} />
-                <h2 style={{
-                  fontFamily: 'VT323, monospace',
-                  fontWeight: 400,
-                  fontSize: '1.4rem',
-                  letterSpacing: '-0.01em',
-                  color: palette.ink,
-                }}>Someday</h2>
-                <span style={{
-                  fontFamily: 'Inter Tight, sans-serif',
-                  fontSize: '0.7rem',
-                  color: palette.ink3,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                }}>
+            <div className="mt-8 max-w-[640px]" style={{ background: '#FFFDF9', border: '2px solid #C9B8E6', borderRadius: 10, boxShadow: '2px 2px 0 rgba(91,62,142,0.10)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: '#ECE0F8', borderBottom: '2px solid #C9B8E6' }}>
+                <span style={{ display: 'inline-flex', gap: 5 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: 999, background: '#D8C7F0', border: '1.5px solid #C9B8E6' }} />
+                  <span style={{ width: 9, height: 9, borderRadius: 999, background: '#E4DAF4', border: '1.5px solid #C9B8E6' }} />
+                </span>
+                <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink2 }}>Someday</span>
+                <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.62rem', fontWeight: 600, color: palette.ink3, background: 'rgba(255,95,176,0.08)', borderRadius: 999, padding: '0 6px' }}>
                   {(s.tasks['someday'] || []).filter(t => !t.completed).length}
                 </span>
               </div>
-              <div className="max-w-[640px]">
+              <div className="px-3 py-3" style={{ opacity: 0.9 }}>
                 <DayColumn
                   date={new Date(0)} // placeholder date (not used since we override inList)
                   tasks={s.tasks['someday'] || []}

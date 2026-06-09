@@ -10,9 +10,9 @@ import { createClient } from '@/lib/supabase-client';
 // Retro Y2K desktop palette ---------------------------------------------------
 const C = {
   edge: '#5B3E8E',        // deep purple — borders + text
-  ink: '#4A2E7A',
-  ink2: '#8B6FB8',
-  ink3: '#B49ED6',
+  ink: '#36215C',
+  ink2: '#6E5499',
+  ink3: '#9F88C9',
   win: '#FFFDF9',         // window content (warm white)
   shadow: 'rgba(91,62,142,0.22)',
 };
@@ -341,7 +341,7 @@ export default function OperatingSystem({ userId }) {
   // Pink grid desktop background.
   const desktopBg = {
     padding: 16, borderRadius: 14,
-    backgroundColor: '#FEF7FC',
+    backgroundColor: '#FEFBFD',
     backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
     backgroundSize: '22px 22px',
     border: `2px solid ${C.edge}`,
