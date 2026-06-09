@@ -1436,10 +1436,23 @@ export default function AlignApp() {
         time: ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', ''),
         title: ev.title,
       }));
+      // Big Three (OS priority layer) for today.
+      const LANES = [
+        { key: 'personal', label: 'Personal' },
+        { key: 'work', label: 'RemoteGenies' },
+        { key: 'team', label: 'Leadership / Team' },
+      ];
+      let bigThree = [];
+      try {
+        const { data: b3 } = await supabase.from('big_three').select('lane, text, completed').eq('user_id', s.user?.id).eq('date', todayKey);
+        const byLane = {};
+        (b3 || []).forEach(r => { byLane[r.lane] = r; });
+        bigThree = LANES.map(l => ({ label: l.label, text: byLane[l.key]?.text || '', completed: !!byLane[l.key]?.completed }));
+      } catch { /* big_three optional */ }
       const res = await fetch('/api/remarkable/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken || ''}` },
-        body: JSON.stringify({ title: `align \u00B7 ${dateLabel}`, dateLabel, tasks, events }),
+        body: JSON.stringify({ title: `align \u00B7 ${dateLabel}`, dateLabel, bigThree, tasks, events }),
       });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'Push failed'); }
       setRmState('sent');

@@ -32,7 +32,7 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const deviceToken = (process.env.REMARKABLE_TOKEN || "").trim();
+  const deviceToken = process.env.REMARKABLE_TOKEN;
   if (!deviceToken) {
     return NextResponse.json(
       { error: 'reMarkable is not connected. Set REMARKABLE_TOKEN in your environment.' },
@@ -42,10 +42,10 @@ export async function POST(req) {
 
   let body = {};
   try { body = await req.json(); } catch { /* empty body ok */ }
-  const { title, dateLabel, tasks = [], events = [] } = body;
+  const { title, dateLabel, bigThree = [], tasks = [], events = [] } = body;
 
   try {
-    const bytes = await buildAgendaPdf({ dateLabel, tasks, events });
+    const bytes = await buildAgendaPdf({ dateLabel, bigThree, tasks, events });
     const api = await remarkable(deviceToken);
     const name = title || `align — ${dateLabel || 'today'}`;
     const entry = await api.uploadPdf(name, bytes);

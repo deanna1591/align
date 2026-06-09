@@ -39,7 +39,7 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const deviceToken = (process.env.REMARKABLE_TOKEN || "").trim();
+  const deviceToken = process.env.REMARKABLE_TOKEN;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const userId = process.env.ALIGN_USER_ID;
@@ -78,13 +78,32 @@ export async function GET(req) {
       leftover: !!r.date && r.date < todayKey,
     }));
 
+    // Big Three (the OS priority layer) for today.
+    const LANES = [
+      { key: 'personal', label: 'Personal' },
+      { key: 'work', label: 'RemoteGenies' },
+      { key: 'team', label: 'Leadership / Team' },
+    ];
+    const { data: b3rows } = await supa
+      .from('big_three')
+      .select('lane, text, completed')
+      .eq('user_id', userId)
+      .eq('date', todayKey);
+    const byLane = {};
+    for (const r of (b3rows || [])) byLane[r.lane] = r;
+    const bigThree = LANES.map(l => ({
+      label: l.label,
+      text: byLane[l.key]?.text || '',
+      completed: !!byLane[l.key]?.completed,
+    }));
+
     const events = await getTodayEvents(userId, tz);
 
-    const bytes = await buildAgendaPdf({ dateLabel, tasks, events });
+    const bytes = await buildAgendaPdf({ dateLabel, bigThree, tasks, events });
     const api = await remarkable(deviceToken);
     const entry = await api.uploadPdf(`align \u00B7 ${dateLabel}`, bytes);
 
-    return NextResponse.json({ ok: true, id: entry?.id ?? null, tasks: tasks.length, events: events.length });
+    return NextResponse.json({ ok: true, id: entry?.id ?? null, bigThree: bigThree.filter(b => b.text).length, tasks: tasks.length, events: events.length });
   } catch (e) {
     console.error('[reMarkable cron]', e);
     return NextResponse.json({ error: e?.message || 'Cron push failed' }, { status: 502 });
