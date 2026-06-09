@@ -8,6 +8,7 @@ import {
   CalendarDays, ListTodo, Type, Compass,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
+import { createClient } from '@/lib/supabase-client';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
@@ -40,9 +41,9 @@ const fmtTime = (s) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 const palette = {
   bg: '#FFFFFF',
   bgRaised: '#FBF1FA',
-  ink: '#36215C',
-  ink2: '#6E5499',
-  ink3: '#9F88C9',
+  ink: '#4A2E7A',
+  ink2: '#8B6FB8',
+  ink3: '#B49ED6',
   border: '#B59BD8',
   borderSoft: '#ECE0F8',
   accent: '#FF5FB0',
@@ -1203,6 +1204,7 @@ export default function AlignApp() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
   const [viewMode, setViewMode] = useState('today'); // 'today' | 'grid' | 'list' | 'focus'
+  const [rmState, setRmState] = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const [appMode, setAppMode] = useState('plan'); // 'plan' (week planner) | 'os' (operating system)
   // Day shown in the "focus" view's top block. Strip below shows focusDay+1..+4.
   const [focusDay, setFocusDay] = useState(today0());
@@ -1419,6 +1421,36 @@ export default function AlignApp() {
     }, 100);
   }, [s.loaded, todayKey, viewMode]);
 
+  // Push today's agenda (to-dos + calendar) to the reMarkable as a PDF.
+  const sendToRemarkable = async () => {
+    if (rmState === 'sending') return;
+    setRmState('sending');
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data?.session?.access_token;
+      const d = today0();
+      const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      const tasks = (todayTasks || []).map(t => ({ text: t.text, completed: !!t.completed, leftover: !!t.leftover }));
+      const events = (eventsByDate[todayKey] || []).map(ev => ({
+        time: ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', ''),
+        title: ev.title,
+      }));
+      const res = await fetch('/api/remarkable/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken || ''}` },
+        body: JSON.stringify({ title: `align \u00B7 ${dateLabel}`, dateLabel, tasks, events }),
+      });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'Push failed'); }
+      setRmState('sent');
+      setTimeout(() => setRmState('idle'), 2500);
+    } catch (e) {
+      console.error('[reMarkable]', e);
+      setRmState('error');
+      setTimeout(() => setRmState('idle'), 3000);
+    }
+  };
+
   if (!s.loaded) {
     return (
       <div style={{ minHeight: '100vh', background: palette.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1430,7 +1462,7 @@ export default function AlignApp() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#FEFBFD',
+      backgroundColor: '#FEF7FC',
       backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
       backgroundSize: '22px 22px',
     }}>
@@ -1575,6 +1607,13 @@ export default function AlignApp() {
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
               title="Refresh calendar events">
               <RotateCcw size={14} />
+            </button>
+            {/* Send today's agenda to the reMarkable tablet */}
+            <button onClick={sendToRemarkable} disabled={rmState === 'sending'}
+              className="p-1.5 rounded transition-colors hover:bg-black/[0.04]"
+              style={{ color: palette.ink2, border: `1px solid ${palette.border}`, opacity: rmState === 'sending' ? 0.5 : 1 }}
+              title={rmState === 'sent' ? 'Sent to reMarkable!' : rmState === 'error' ? 'Send failed — try again' : rmState === 'sending' ? 'Sending…' : "Send today's agenda to reMarkable"}>
+              <PixelIcon name="floppy" color={rmState === 'sent' ? '#3FB8DE' : rmState === 'error' ? '#C0392B' : palette.ink2} px={2} />
             </button>
           </div>
           <div className="hidden md:flex items-center gap-2" style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: palette.ink3 }}>
