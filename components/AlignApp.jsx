@@ -5,13 +5,14 @@ import {
   Check, X, Plus, ChevronLeft, ChevronRight, Sparkles, Brain,
   Play, Pause, Flame, Sunrise, Minimize2, CircleDot, MoreHorizontal,
   RotateCcw, Target, Command, LogOut, LayoutList, LayoutGrid, AlertCircle, Settings,
-  CalendarDays, ListTodo, Type,
+  CalendarDays, ListTodo, Type, Compass,
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
 import Lists from './Lists';
+import OperatingSystem from './OperatingSystem';
 
 // ============================================================
 //  HELPERS
@@ -935,6 +936,7 @@ export default function AlignApp() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list' | 'focus'
+  const [appMode, setAppMode] = useState('plan'); // 'plan' (week planner) | 'os' (operating system)
   // Day shown in the "focus" view's top block. Strip below shows focusDay+1..+4.
   const [focusDay, setFocusDay] = useState(today0());
   // Text size preference. Scales document root font-size; nearly all UI uses rem so this propagates.
@@ -1215,6 +1217,29 @@ export default function AlignApp() {
             })()}
           </div>
           <div className="flex items-center gap-2">
+            {/* Plan ↔ Operating System mode toggle */}
+            <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: palette.bgRaised, border: `1px solid ${palette.border}` }}>
+              <button onClick={() => setAppMode('plan')}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full transition-colors"
+                style={{
+                  background: appMode === 'plan' ? palette.bg : 'transparent',
+                  color: appMode === 'plan' ? palette.ink : palette.ink3,
+                  border: appMode === 'plan' ? `1px solid ${palette.border}` : '1px solid transparent',
+                  fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', fontWeight: 500,
+                }} title="Week planner">
+                <CalendarDays size={13} /> Plan
+              </button>
+              <button onClick={() => setAppMode('os')}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full transition-colors"
+                style={{
+                  background: appMode === 'os' ? palette.bg : 'transparent',
+                  color: appMode === 'os' ? palette.ink : palette.ink3,
+                  border: appMode === 'os' ? `1px solid ${palette.border}` : '1px solid transparent',
+                  fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', fontWeight: 500,
+                }} title="Personal operating system">
+                <Compass size={13} /> OS
+              </button>
+            </div>
             <button onClick={() => setBrainOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Brain dump (B)"><Brain size={14} /></button>
             <button onClick={() => setClosureOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
@@ -1226,6 +1251,10 @@ export default function AlignApp() {
           </div>
         </header>
 
+        {appMode === 'os' ? (
+          <OperatingSystem userId={s.user?.id} />
+        ) : (
+        <>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button onClick={() => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); }}
@@ -1668,6 +1697,8 @@ export default function AlignApp() {
         <footer className="mt-20 pt-6 text-center" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
           <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>Momentum, not pressure.</p>
         </footer>
+        </>
+        )}
       </div>
 
       <BrainDump open={brainOpen} onClose={() => setBrainOpen(false)} items={s.brainDump}
