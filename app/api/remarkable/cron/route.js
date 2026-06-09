@@ -39,7 +39,7 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const deviceToken = process.env.REMARKABLE_TOKEN;
+  const deviceToken = (process.env.REMARKABLE_TOKEN || "").trim();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const userId = process.env.ALIGN_USER_ID;
