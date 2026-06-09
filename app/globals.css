@@ -2,18 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  background: #FFFFFF;
-  color: #1A1A1A;
+/* Stop iOS/Android from auto-resizing text on rotate. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
-/* Prevent iOS Safari from auto-zooming when focusing an input.
-   iOS zooms whenever an input renders below 16px — even when the viewport
-   meta says no-zoom. Applied unconditionally (not behind a media query)
-   because iPad-landscape and larger-phone-landscape exceed 768px width
-   but still suffer from the same zoom behavior. */
-input,
-textarea,
-select {
-  font-size: max(16px, 1rem) !important;
+html, body {
+  background: #FDF1F9;
+  color: #4A2E7A;
+}
+
+/* No double-tap zoom, no rubber-band horizontal scroll from the chunky
+   window shadows/borders on small screens. */
+body {
+  touch-action: manipulation;
+  overflow-x: hidden;
+}
+
+/* Prevent iOS Safari from auto-zooming when an input is focused.
+   Any input rendered below 16px triggers the zoom, so pin every
+   form field to 16px regardless of its inline style. */
+input, textarea, select {
+  font-size: 16px !important;
 }
