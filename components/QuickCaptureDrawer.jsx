@@ -5,15 +5,15 @@ import { X, Mic, MicOff, Send, Brain } from 'lucide-react';
 
 const palette = {
   bg: '#FFFFFF',
-  bgRaised: '#FAFAFA',
-  ink: '#1A1A1A',
-  ink2: '#5C5448',
-  ink3: '#9A917F',
-  border: '#EAEAEA',
-  borderSoft: '#F2F2F2',
-  accent: '#7CA481',
-  accentSoft: 'rgba(124,164,129,0.10)',
-  warn: '#C9824A',
+  bgRaised: '#FBF1FA',
+  ink: '#4A2E7A',
+  ink2: '#8B6FB8',
+  ink3: '#B49ED6',
+  border: '#B59BD8',
+  borderSoft: '#ECE0F8',
+  accent: '#FF5FB0',
+  accentSoft: 'rgba(255,95,176,0.14)',
+  warn: '#9B5CFF',
 };
 
 function getSpeechRecognition() {
@@ -139,38 +139,40 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture }) {
       <div
         className="fixed bottom-0 left-0 right-0 z-50 transition-transform"
         style={{
-          background: palette.bgRaised,
-          borderTop: `1px solid ${palette.border}`,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          background: '#FFFDF9',
+          borderTop: `2px solid ${palette.ink}`,
+          borderLeft: `2px solid ${palette.ink}`,
+          borderRight: `2px solid ${palette.ink}`,
+          borderTopLeftRadius: 12,
+          borderTopRightRadius: 12,
           transform: open ? 'translateY(0)' : 'translateY(100%)',
           transitionDuration: '320ms',
           transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)',
-          boxShadow: '0 -8px 32px rgba(27,24,19,0.10)',
+          boxShadow: '0 -4px 0 rgba(91,62,142,0.18)',
+          overflow: 'hidden',
         }}
       >
-        <div className="max-w-[680px] mx-auto px-5 pt-5 pb-6">
-          <div
-            className="mx-auto mb-4 rounded-full"
-            style={{ width: 40, height: 4, background: palette.border }}
-          />
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Brain size={14} style={{ color: palette.accent }} />
-              <h2 style={{
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                color: palette.ink2,
-              }}>
-                Quick capture
-              </h2>
-            </div>
-            <button onClick={onClose} className="p-1 hover:bg-black/[0.04] rounded" style={{ color: palette.ink2 }}>
-              <X size={16} />
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}` }}>
+          <span style={{ display: 'inline-flex', gap: 5 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FF6FB5', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FCD93D', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#9B5CFF', border: `1.5px solid ${palette.ink}` }} />
+          </span>
+          <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink }}>QUICK_CAPTURE.EXE</span>
+          <button onClick={onClose} style={{ width: 18, height: 16, borderRadius: 2, border: `1.5px solid ${palette.ink}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: palette.ink }}><X size={11} /></button>
+        </div>
+        <div className="max-w-[680px] mx-auto px-5 pt-4 pb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Brain size={14} style={{ color: palette.accent }} />
+            <h2 style={{
+              fontFamily: 'VT323, monospace',
+              fontSize: '1.15rem',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: palette.ink2,
+            }}>
+              Quick capture
+            </h2>
           </div>
 
           <div

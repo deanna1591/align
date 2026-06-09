@@ -5,14 +5,14 @@ import { Plus, X, Trash2 } from 'lucide-react';
 
 const palette = {
   bg: '#FFFFFF',
-  bgRaised: '#FAFAFA',
-  ink: '#1A1A1A',
-  ink2: '#5C5448',
-  ink3: '#9A917F',
-  border: '#EAEAEA',
-  borderSoft: '#F2F2F2',
-  accent: '#7CA481',
-  warn: '#C9824A',
+  bgRaised: '#FBF1FA',
+  ink: '#4A2E7A',
+  ink2: '#8B6FB8',
+  ink3: '#B49ED6',
+  border: '#B59BD8',
+  borderSoft: '#ECE0F8',
+  accent: '#FF5FB0',
+  warn: '#9B5CFF',
 };
 
 export default function Lists({ lists, listItems, onCreateList, onDeleteList, onAddItem, onToggleItem, onEditItem, onDeleteItem }) {
@@ -31,7 +31,7 @@ export default function Lists({ lists, listItems, onCreateList, onDeleteList, on
     <div className="mt-12 pt-8" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
       <div className="flex items-center gap-3 mb-6">
         <h2 style={{
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'VT323, monospace',
           fontWeight: 400,
           fontSize: '1.4rem',
           letterSpacing: '-0.01em',

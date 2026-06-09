@@ -39,16 +39,16 @@ const fmtTime = (s) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 // ============================================================
 const palette = {
   bg: '#FFFFFF',
-  bgRaised: '#FAFAFA',
-  ink: '#1A1A1A',
-  ink2: '#5C5448',
-  ink3: '#9A917F',
-  border: '#EAEAEA',
-  borderSoft: '#F2F2F2',
-  accent: '#7CA481',
-  accentSoft: 'rgba(124,164,129,0.10)',
-  accentSofter: 'rgba(124,164,129,0.05)',
-  warm: '#C9824A',
+  bgRaised: '#FBF1FA',
+  ink: '#4A2E7A',
+  ink2: '#8B6FB8',
+  ink3: '#B49ED6',
+  border: '#B59BD8',
+  borderSoft: '#ECE0F8',
+  accent: '#FF5FB0',
+  accentSoft: 'rgba(255,95,176,0.14)',
+  accentSofter: 'rgba(255,95,176,0.07)',
+  warm: '#9B5CFF',
   errBg: '#FBE9E5',
   errInk: '#8C3A2A',
   // Event source colors — calendar events render as pills tinted by their source label.
@@ -57,13 +57,120 @@ const palette = {
   eventWorkBg: '#E5EDF4',
   eventWorkDot: '#6B7F8D',
   // Subtle elevation — neutral, not warm-tinted.
-  softShadow: '0 1px 14px rgba(0, 0, 0, 0.04)',
-  softShadowStrong: '0 4px 24px rgba(0, 0, 0, 0.06)',
+  softShadow: '2px 2px 0 rgba(91,62,142,0.16)',
+  softShadowStrong: '4px 4px 0 rgba(91,62,142,0.22)',
 };
 
 // ============================================================
-//  TASK MENU
+//  PIXEL-ART Y2K ICONS — tiny sprites rendered from string grids
 // ============================================================
+const PIXEL = {
+  heart: [
+    '0110110',
+    '1111111',
+    '1111111',
+    '0111110',
+    '0011100',
+    '0001000',
+  ],
+  star: [
+    '0001000',
+    '0001000',
+    '0011100',
+    '1111111',
+    '0011100',
+    '0001000',
+    '0001000',
+  ],
+  sparkle: [
+    '00010000',
+    '00010000',
+    '00111000',
+    '11111110',
+    '00111000',
+    '00010000',
+    '00010000',
+  ],
+  floppy: [
+    '11111110',
+    '10011010',
+    '10011010',
+    '10011010',
+    '10000010',
+    '11111110',
+    '10111010',
+    '11111110',
+  ],
+  cd: [
+    '00111100',
+    '01100110',
+    '11011011',
+    '11011011',
+    '11011011',
+    '11011011',
+    '01100110',
+    '00111100',
+  ],
+  smile: [
+    '00111100',
+    '01000010',
+    '10100101',
+    '10000001',
+    '10100101',
+    '10011001',
+    '01000010',
+    '00111100',
+  ],
+};
+
+function PixelIcon({ name, color = '#FF5FB0', px = 2, style = {} }) {
+  const grid = PIXEL[name];
+  if (!grid) return null;
+  const cols = grid[0].length;
+  const rows = grid.length;
+  const rects = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (grid[y][x] === '1') rects.push(<rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} />);
+    }
+  }
+  return (
+    <svg width={cols * px} height={rows * px} viewBox={`0 0 ${cols} ${rows}`}
+      shapeRendering="crispEdges" style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}>
+      {rects}
+    </svg>
+  );
+}
+
+// Totally-Spies sparkle burst — fires when a task is completed.
+const BURST_GLYPHS = ['✦', '♥', '★', '✿', '✦'];
+const BURST_COLORS = ['#FF5FB0', '#FCD93D', '#9B5CFF', '#3FB8DE', '#FF8AD0'];
+function SpyBurst() {
+  const parts = useMemo(() => {
+    const n = 9;
+    return Array.from({ length: n }, (_, i) => {
+      const ang = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+      const dist = 18 + Math.random() * 16;
+      return {
+        tx: Math.round(Math.cos(ang) * dist),
+        ty: Math.round(Math.sin(ang) * dist),
+        g: BURST_GLYPHS[i % BURST_GLYPHS.length],
+        c: BURST_COLORS[i % BURST_COLORS.length],
+        delay: Math.round(Math.random() * 70),
+        size: 9 + Math.round(Math.random() * 6),
+      };
+    });
+  }, []);
+  return (
+    <span style={{ position: 'absolute', left: '50%', top: '50%', width: 0, height: 0, pointerEvents: 'none', zIndex: 6 }} aria-hidden="true">
+      {parts.map((p, i) => (
+        <span key={i} className="spy-particle" style={{ '--tx': `${p.tx}px`, '--ty': `${p.ty}px`, animationDelay: `${p.delay}ms`, color: p.c, fontSize: `${p.size}px` }}>{p.g}</span>
+      ))}
+    </span>
+  );
+}
+
+
 function TaskMenu({ task, lists, onDelete, onFocus, onClose, onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList }) {
   const ref = useRef(null);
   const [listsSubmenuOpen, setListsSubmenuOpen] = useState(false);
@@ -285,6 +392,12 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
   const [menuOpen, setMenuOpen] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pop, setPop] = useState(false);
+  const handleToggle = () => {
+    const willComplete = !task.completed;
+    onToggle(task.id);
+    if (willComplete) { setPop(true); setTimeout(() => setPop(false), 760); }
+  };
   const swipeStart = useRef(null);
   const inMotion = task.started && !task.completed;
 
@@ -354,7 +467,7 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(task.id); setShowDeleteConfirm(false); setSwipeX(0); }}
             className="px-3 py-1.5 rounded-md text-xs flex items-center gap-1"
-            style={{ background: '#C9824A', color: 'white', fontFamily: 'Inter Tight, sans-serif', fontWeight: 500, border: 'none' }}
+            style={{ background: '#9B5CFF', color: 'white', fontFamily: 'Inter Tight, sans-serif', fontWeight: 500, border: 'none' }}
           >
             <X size={12} /> Delete
           </button>
@@ -369,8 +482,8 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
           background: showDeleteConfirm ? 'white' : 'transparent',
         }}
       >
-        <button onClick={() => onToggle(task.id)}
-          className="mt-[3px] flex-shrink-0 flex items-center justify-center transition-all relative"
+        <button onClick={handleToggle}
+          className={`mt-[3px] flex-shrink-0 flex items-center justify-center transition-all relative${pop ? ' spy-check-pop' : ''}`}
           style={{
             width: 16, height: 16,
             border: `1.5px solid ${task.completed ? palette.accent : palette.ink3}`,
@@ -379,6 +492,7 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
           }} aria-label="toggle">
           {task.completed && <Check size={10} color="white" strokeWidth={3.5} />}
           {inMotion && <span className="absolute -inset-1 rounded animate-pulse-soft" style={{ border: `1px solid ${palette.accent}`, opacity: 0.4 }} />}
+          {pop && <SpyBurst key={Date.now()} />}
         </button>
         {editing ? (
           <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onBlur={saveEdit}
@@ -449,24 +563,25 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
 
   const containerClass = inList
     ? 'flex flex-col px-2 py-1 rounded-md transition-colors w-full'
-    : 'flex flex-col min-h-[280px] px-2 py-1 rounded-md transition-colors snap-start';
+    : 'flex flex-col min-h-[280px] transition-colors snap-start overflow-hidden';
 
   return (
     <div data-date={dateKey(date)} className={containerClass}
       style={{
-        background: dropping ? palette.accentSoft : 'transparent',
+        background: dropping ? palette.accentSoft : (inList ? 'transparent' : '#fff'),
         opacity: past && !today ? 0.65 : 1,
-        boxShadow: today && !dropping ? palette.softShadow : 'none',
+        ...(inList
+          ? { boxShadow: today && !dropping ? palette.softShadow : 'none' }
+          : { border: `2px solid ${palette.ink}`, borderRadius: 8, boxShadow: palette.softShadowStrong }),
       }}
       onDragOver={(e) => { e.preventDefault(); onDragOver(dateKey(date)); }}
       onDrop={(e) => { e.preventDefault(); onDrop(dateKey(date)); }}>
-      {!hideDateHeader && (
+      {!hideDateHeader && (inList ? (
         <div className="mb-3 pb-2" style={{ borderBottom: `1px solid ${today ? palette.accent : palette.border}` }}>
           <div className="flex items-baseline justify-between gap-2">
             <h2 style={{
-              fontFamily: 'Fraunces, serif', fontSize: '1.55rem',
+              fontFamily: 'VT323, monospace', fontSize: '1.55rem',
               fontWeight: today ? 500 : 400,
-              fontVariationSettings: today ? "'SOFT' 100, 'opsz' 144" : "'SOFT' 50, 'opsz' 144",
               color: today ? palette.accent : palette.ink,
               letterSpacing: '-0.02em', lineHeight: 1,
             }}>{fmtDay(date)}</h2>
@@ -477,8 +592,21 @@ function DayColumn({ date, tasks, events, onAdd, onToggle, onEdit, onDelete, onS
             }}>{fmtDate(date)}</span>
           </div>
         </div>
-      )}
-      <div className="flex-1 space-y-0.5 pl-2">
+      ) : (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7, padding: '6px 9px',
+          background: today ? '#FFB3DE' : '#DAC4FF', borderBottom: `2px solid ${palette.ink}`,
+        }}>
+          <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 999, background: '#FF6FB5', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 9, height: 9, borderRadius: 999, background: '#FCD93D', border: `1.5px solid ${palette.ink}` }} />
+          </span>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: palette.ink, lineHeight: 1 }}>{fmtDay(date)}</span>
+          {today && <span style={{ color: palette.accent, fontSize: '0.8rem' }}>★</span>}
+          <span style={{ marginLeft: 'auto', fontFamily: 'VT323, monospace', fontSize: '1rem', textTransform: 'uppercase', color: palette.ink2 }}>{fmtDate(date)}</span>
+        </div>
+      ))}
+      <div className={`flex-1 space-y-0.5 ${inList ? 'pl-2' : 'px-2.5 py-2'}`}>
         {events && events.length > 0 && (
           <div className="mb-2 space-y-1">
             {events.map((ev) => {
@@ -606,7 +734,7 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
         <div className="flex md:hidden items-center justify-between gap-3">
           {allDone && completionQuote ? (
             <div style={{
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'VT323, monospace',
               fontStyle: 'italic',
               fontSize: '0.82rem',
               color: palette.accent,
@@ -641,20 +769,20 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
             <div className="flex items-center gap-3 flex-wrap">
               {allDone && completionQuote ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '1.05rem', color: palette.accent, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}>
+                  <span style={{ fontFamily: 'VT323, monospace', fontStyle: 'italic', fontSize: '1.05rem', color: palette.accent, lineHeight: 1.2, fontVariationSettings: "'opsz' 144" }}>
                     {completionQuote.line}
                   </span>
-                  <span style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.82rem', color: palette.ink3, lineHeight: 1.3, fontVariationSettings: "'opsz' 144" }}>
+                  <span style={{ fontFamily: 'VT323, monospace', fontStyle: 'italic', fontSize: '0.82rem', color: palette.ink3, lineHeight: 1.3, fontVariationSettings: "'opsz' 144" }}>
                     {completionQuote.sub}
                   </span>
                 </div>
               ) : top3.length === 0 ? (
-                <span style={{ fontFamily: 'Fraunces, serif', fontSize: '0.95rem', color: palette.ink3, fontStyle: 'italic' }}>Nothing pinned for today.</span>
+                <span style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', color: palette.ink3, fontStyle: 'italic' }}>Nothing pinned for today.</span>
               ) : (top3.map((t, i) => (
                 <button key={t.id} onClick={() => onSelectFocus(t)}
                   className="flex items-center gap-1.5 text-left transition-opacity hover:opacity-100"
                   style={{ opacity: currentFocus?.id === t.id ? 1 : 0.85 }}>
-                  <span style={{ fontFamily: 'Fraunces, serif', fontSize: '0.85rem', color: palette.ink3, fontWeight: 400 }}>{String(i + 1).padStart(2, '0')}</span>
+                  <span style={{ fontFamily: 'VT323, monospace', fontSize: '0.85rem', color: palette.ink3, fontWeight: 400 }}>{String(i + 1).padStart(2, '0')}</span>
                   <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', color: palette.ink, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.text}</span>
                   {t.started && <CircleDot size={10} style={{ color: palette.accent }} />}
                 </button>
@@ -665,7 +793,7 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
             <div className="flex flex-col items-end">
               <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2 }}>Progress</span>
               <div className="flex items-center gap-2 mt-1">
-                <span style={{ fontFamily: 'Fraunces, serif', fontSize: '1rem', color: palette.ink, fontVariationSettings: "'opsz' 144" }}>
+                <span style={{ fontFamily: 'VT323, monospace', fontSize: '1rem', color: palette.ink, fontVariationSettings: "'opsz' 144" }}>
                   {completedToday}<span style={{ color: palette.ink3, fontSize: '0.85rem' }}> / {totalToday || '—'}</span>
                 </span>
                 <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: palette.borderSoft }}>
@@ -677,7 +805,7 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
               <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2 }}>Streak</span>
               <div className="flex items-center gap-1.5 mt-1">
                 <Flame size={13} style={{ color: stats.streak > 0 ? palette.warm : palette.ink3 }} />
-                <span style={{ fontFamily: 'Fraunces, serif', fontSize: '1rem', color: palette.ink }}>{stats.streak}</span>
+                <span style={{ fontFamily: 'VT323, monospace', fontSize: '1rem', color: palette.ink }}>{stats.streak}</span>
               </div>
             </div>
           </div>
@@ -707,15 +835,21 @@ function BrainDump({ open, onClose, items, onAdd, onDelete, onPromote }) {
         style={{ background: 'rgba(27,24,19,0.15)', opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none' }}
         onClick={onClose} />
       <div className="fixed top-0 right-0 bottom-0 z-40 flex flex-col transition-transform"
-        style={{ width: 380, maxWidth: '90vw', background: palette.bgRaised, borderLeft: `1px solid ${palette.border}`,
+        style={{ width: 380, maxWidth: '90vw', background: '#FFFDF9', borderLeft: `2px solid ${palette.ink}`,
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transitionDuration: '420ms', transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)' }}>
-        <div className="px-6 pt-6 pb-4 flex items-center justify-between" style={{ borderBottom: `1px solid ${palette.borderSoft}` }}>
-          <div>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', color: palette.ink, fontVariationSettings: "'opsz' 144", letterSpacing: '-0.02em' }}>Brain dump</h2>
-            <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink3, marginTop: 2 }}>Empty your head. Sort later.</p>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-black/[0.04] rounded" style={{ color: palette.ink2 }}><X size={16} /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}`, flexShrink: 0 }}>
+          <span style={{ display: 'inline-flex', gap: 5 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FF6FB5', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FCD93D', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#9B5CFF', border: `1.5px solid ${palette.ink}` }} />
+          </span>
+          <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink }}>BRAIN_DUMP.EXE</span>
+          <button onClick={onClose} style={{ width: 18, height: 16, borderRadius: 2, border: `1.5px solid ${palette.ink}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: palette.ink }}><X size={11} /></button>
+        </div>
+        <div className="px-6 pt-4 pb-4" style={{ borderBottom: `2px solid ${palette.borderSoft}` }}>
+          <h2 style={{ fontFamily: 'VT323, monospace', fontSize: '1.6rem', textTransform: 'uppercase', color: palette.ink, letterSpacing: '0.03em' }}>Brain dump</h2>
+          <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink3, marginTop: 2 }}>Empty your head. Sort later.</p>
         </div>
         <form onSubmit={submit} className="px-6 py-4">
           <div className="flex items-center gap-2 px-3 py-2 rounded" style={{ background: palette.bg, border: `1px solid ${palette.borderSoft}` }}>
@@ -735,7 +869,7 @@ function BrainDump({ open, onClose, items, onAdd, onDelete, onPromote }) {
           {items.length === 0 ? (
             <div className="pt-12 text-center">
               <Brain size={28} style={{ color: palette.ink3, opacity: 0.4 }} className="mx-auto mb-3" />
-              <p style={{ fontFamily: 'Fraunces, serif', fontSize: '0.95rem', color: palette.ink3, fontStyle: 'italic' }}>Nothing here yet.</p>
+              <p style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', color: palette.ink3, fontStyle: 'italic' }}>Nothing here yet.</p>
             </div>
           ) : (
             <ul className="space-y-3">
@@ -805,7 +939,7 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
       </div>
       <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-8 max-w-[680px] mx-auto w-full">
         <h1 style={{
-          fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.75rem, 4vw, 3.25rem)',
+          fontFamily: 'VT323, monospace', fontSize: 'clamp(1.75rem, 4vw, 3.25rem)',
           fontWeight: 400, lineHeight: 1.15, color: palette.ink,
           letterSpacing: '-0.025em', textAlign: 'center',
           fontVariationSettings: "'SOFT' 100, 'opsz' 144",
@@ -815,7 +949,7 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
             style={{ background: running ? palette.accent : 'transparent', border: `1.5px solid ${palette.accent}`, color: running ? 'white' : palette.accent }}>
             {running ? <Pause size={18} /> : <Play size={18} />}
           </button>
-          <div style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', color: palette.ink, fontVariationSettings: "'opsz' 144", letterSpacing: '-0.02em', minWidth: 120 }}>{fmtTime(seconds)}</div>
+          <div style={{ fontFamily: 'VT323, monospace', fontSize: '2.5rem', color: palette.ink, fontVariationSettings: "'opsz' 144", letterSpacing: '-0.02em', minWidth: 120 }}>{fmtTime(seconds)}</div>
           <button onClick={() => { setSeconds(0); setRunning(false); }} className="opacity-50 hover:opacity-100 transition-opacity" style={{ color: palette.ink2 }} title="Reset"><RotateCcw size={16} /></button>
         </div>
         <div className="mt-12 w-full">
@@ -837,7 +971,7 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl flex items-center gap-3"
           style={{ background: palette.bgRaised, border: `1px solid ${palette.border}`, boxShadow: '0 8px 28px rgba(27,24,19,0.10)', animation: 'fadein 0.5s ease' }}>
           <Sunrise size={15} style={{ color: palette.accent }} />
-          <span style={{ fontFamily: 'Fraunces, serif', fontSize: '0.95rem', color: palette.ink, fontStyle: 'italic' }}>You were making progress here.</span>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', color: palette.ink, fontStyle: 'italic' }}>You were making progress here.</span>
           <button onClick={() => { lastActivity.current = Date.now(); setShowRecover(false); }} className="px-3 py-1 rounded-full transition-colors"
             style={{ background: palette.accentSoft, color: palette.accent, fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', fontWeight: 500 }}>Still here →</button>
         </div>
@@ -861,7 +995,7 @@ function DailyClosure({ open, onClose, todayTasks, stats }) {
           <Sunrise size={28} style={{ color: palette.accent }} className="mx-auto mb-4" />
           <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: palette.ink2 }}>End of day</p>
           <h1 style={{
-            fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
+            fontFamily: 'VT323, monospace', fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
             fontWeight: 400, color: palette.ink, marginTop: 12, lineHeight: 1.15,
             letterSpacing: '-0.025em', fontVariationSettings: "'SOFT' 100, 'opsz' 144",
           }}>
@@ -871,15 +1005,15 @@ function DailyClosure({ open, onClose, todayTasks, stats }) {
         <div className="mt-12 space-y-10">
           <div className="grid grid-cols-3 gap-6 text-center">
             <div>
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '2.25rem', color: palette.ink, fontVariationSettings: "'opsz' 144" }}>{completed.length}</div>
+              <div style={{ fontFamily: 'VT323, monospace', fontSize: '2.25rem', color: palette.ink, fontVariationSettings: "'opsz' 144" }}>{completed.length}</div>
               <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2, marginTop: 4 }}>Completed</div>
             </div>
             <div>
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '2.25rem', color: palette.warm, fontVariationSettings: "'opsz' 144" }}>{stats.streak}</div>
+              <div style={{ fontFamily: 'VT323, monospace', fontSize: '2.25rem', color: palette.warm, fontVariationSettings: "'opsz' 144" }}>{stats.streak}</div>
               <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2, marginTop: 4 }}>Day streak</div>
             </div>
             <div>
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '2.25rem', color: palette.ink, fontVariationSettings: "'opsz' 144" }}>{inMotion.length}</div>
+              <div style={{ fontFamily: 'VT323, monospace', fontSize: '2.25rem', color: palette.ink, fontVariationSettings: "'opsz' 144" }}>{inMotion.length}</div>
               <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2, marginTop: 4 }}>In motion</div>
             </div>
           </div>
@@ -1143,17 +1277,30 @@ export default function AlignApp() {
   if (!s.loaded) {
     return (
       <div style={{ minHeight: '100vh', background: palette.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', color: palette.ink3, fontStyle: 'italic' }}>Aligning…</span>
+        <span style={{ fontFamily: 'VT323, monospace', fontSize: '1.1rem', color: palette.ink3, fontStyle: 'italic' }}>Aligning…</span>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: palette.bg }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#FDF1F9',
+      backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
+      backgroundSize: '22px 22px',
+    }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..600,30..100&family=Inter+Tight:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Fraunces:opsz,wght,SOFT@9..144,300..600,30..100&family=Inter+Tight:wght@400;500;600;700&display=swap');
         @keyframes pulse-soft { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
         .animate-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+        @keyframes spy-fly {
+          0% { transform: translate(-50%,-50%) translate(0,0) scale(0.3) rotate(0deg); opacity: 0; }
+          25% { opacity: 1; }
+          100% { transform: translate(-50%,-50%) translate(var(--tx),var(--ty)) scale(1.15) rotate(180deg); opacity: 0; }
+        }
+        .spy-particle { position: absolute; left: 0; top: 0; line-height: 1; transform: translate(-50%,-50%); opacity: 0; animation: spy-fly 0.72s ease-out forwards; }
+        @keyframes spy-pop { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1); } }
+        .spy-check-pop { animation: spy-pop 0.42s cubic-bezier(.3,1.7,.5,1); }
         @keyframes fadein { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
         input::placeholder, textarea::placeholder { color: ${palette.ink3}; opacity: 0.6; font-style: italic; }
         ::selection { background: ${palette.accentSoft}; }
@@ -1173,12 +1320,16 @@ export default function AlignApp() {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline gap-4">
               <h1 style={{
-                fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.85rem, 5vw, 2.5rem)',
-                fontWeight: 400, color: palette.ink, letterSpacing: '-0.035em', lineHeight: 1,
-                fontVariationSettings: "'SOFT' 100, 'opsz' 144",
+                fontFamily: "'Press Start 2P', monospace", fontSize: 'clamp(1rem, 3.2vw, 1.5rem)',
+                fontWeight: 400, color: palette.ink, letterSpacing: '0', lineHeight: 1.1,
               }}>align</h1>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <PixelIcon name="sparkle" color="#FCD93D" px={3} />
+                <PixelIcon name="heart" color="#FF5FB0" px={3} />
+                <PixelIcon name="star" color="#9B5CFF" px={3} />
+              </span>
               <span className="hidden sm:inline" style={{
-                fontFamily: 'Fraunces, serif',
+                fontFamily: 'VT323, monospace',
                 fontSize: '1.05rem',
                 fontStyle: 'italic',
                 color: palette.ink3,
@@ -1191,7 +1342,7 @@ export default function AlignApp() {
               const q = getDailyQuote(todayKey);
               return (
                 <p style={{
-                  fontFamily: 'Fraunces, serif',
+                  fontFamily: 'VT323, monospace',
                   fontStyle: 'italic',
                   fontSize: '0.92rem',
                   color: palette.ink3,
@@ -1259,7 +1410,7 @@ export default function AlignApp() {
           <div className="flex items-center gap-3">
             <button onClick={() => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); }}
               className="p-1.5 rounded transition-colors hover:bg-black/[0.04]" style={{ color: palette.ink2 }}><ChevronLeft size={16} /></button>
-            <span style={{ fontFamily: 'Fraunces, serif', fontSize: '1rem', color: palette.ink2, fontVariationSettings: "'opsz' 144" }}>
+            <span style={{ fontFamily: 'VT323, monospace', fontSize: '1rem', color: palette.ink2, fontVariationSettings: "'opsz' 144" }}>
               {weekStart.toLocaleDateString('en-US', { month: 'long' })} {weekStart.getDate()} – {days[6].toLocaleDateString('en-US', { month: 'short' })} {days[6].getDate()}
             </span>
             <button onClick={() => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); }}
@@ -1456,7 +1607,7 @@ export default function AlignApp() {
                         {fmtDay(d).slice(0, 3)}
                       </div>
                       <div style={{
-                        fontFamily: 'Fraunces, serif',
+                        fontFamily: 'VT323, monospace',
                         fontSize: '1rem',
                         color: palette.ink,
                         letterSpacing: '-0.01em',
@@ -1499,7 +1650,7 @@ export default function AlignApp() {
                         )}
                         {empty && (
                           <div style={{
-                            fontFamily: 'Fraunces, serif',
+                            fontFamily: 'VT323, monospace',
                             fontSize: '0.8rem',
                             color: palette.ink3,
                             fontStyle: 'italic',
@@ -1566,7 +1717,7 @@ export default function AlignApp() {
               <div className="flex items-center gap-3 mb-4">
                 <RotateCcw size={14} style={{ color: palette.warm }} />
                 <h2 style={{
-                  fontFamily: 'Fraunces, serif',
+                  fontFamily: 'VT323, monospace',
                   fontWeight: 400,
                   fontSize: '1.4rem',
                   letterSpacing: '-0.01em',
@@ -1633,7 +1784,7 @@ export default function AlignApp() {
               <div className="flex items-center gap-3 mb-4">
                 <Sunrise size={14} style={{ color: palette.accent }} />
                 <h2 style={{
-                  fontFamily: 'Fraunces, serif',
+                  fontFamily: 'VT323, monospace',
                   fontWeight: 400,
                   fontSize: '1.4rem',
                   letterSpacing: '-0.01em',
@@ -1694,8 +1845,15 @@ export default function AlignApp() {
           />
         </div>
 
-        <footer className="mt-20 pt-6 text-center" style={{ borderTop: `1px solid ${palette.borderSoft}` }}>
-          <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>Momentum, not pressure.</p>
+        <footer className="mt-20 pt-6 text-center" style={{ borderTop: `2px solid ${palette.borderSoft}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
+            <PixelIcon name="heart" color="#FF5FB0" px={3} />
+            <PixelIcon name="heart" color="#FF8AD0" px={3} />
+            <PixelIcon name="heart" color="#FCD93D" px={3} />
+            <PixelIcon name="heart" color="#9B5CFF" px={3} />
+            <PixelIcon name="heart" color="#3FB8DE" px={3} />
+          </div>
+          <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.15rem', letterSpacing: '0.05em', color: palette.ink3, textTransform: 'uppercase' }}>★ Momentum, not pressure ★</p>
         </footer>
         </>
         )}
@@ -1769,7 +1927,7 @@ export default function AlignApp() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'VT323, monospace',
               fontSize: '1.25rem',
               fontWeight: 400,
               color: palette.ink,
@@ -1873,7 +2031,7 @@ export default function AlignApp() {
 
       <button onClick={() => setBrainOpen(true)}
         className="fixed bottom-[88px] right-[20px] md:bottom-[80px] md:right-[26px] w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-105"
-        style={{ background: '#FAFAFA', border: `1px solid ${palette.border}`, color: palette.ink2, boxShadow: '0 2px 8px rgba(27, 24, 19, 0.08)', zIndex: 30 }}
+        style={{ background: '#FBF1FA', border: `1px solid ${palette.border}`, color: palette.ink2, boxShadow: '0 2px 8px rgba(27, 24, 19, 0.08)', zIndex: 30 }}
         title="Brain dump list (B)"><ListTodo size={14} /></button>
 
       <button onClick={() => setQuickOpen(true)}
