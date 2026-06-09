@@ -32,7 +32,7 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const deviceToken = process.env.REMARKABLE_TOKEN;
+  const deviceToken = (process.env.REMARKABLE_TOKEN || "").trim();
   if (!deviceToken) {
     return NextResponse.json(
       { error: 'reMarkable is not connected. Set REMARKABLE_TOKEN in your environment.' },
