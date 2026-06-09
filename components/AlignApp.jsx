@@ -1058,6 +1058,102 @@ function ErrorBanner({ error }) {
 }
 
 // ============================================================
+//  TODAY VIEW — to-do (left) + calendar (right), stacks on mobile
+// ============================================================
+function TodayView({ date, tasks, events, lists, topThreeIds,
+  onAdd, onToggle, onEdit, onDelete, onStart, onPause, onFocus, onOpenActionMenu,
+  onMoveToTomorrow, onMoveToSomeday, onPickDate, onMoveToList, onDeleteEvent }) {
+  const [input, setInput] = useState('');
+  const dKey = dateKey(date);
+  const leftover = tasks.filter(t => t.leftover && !t.completed);
+  const rest = tasks.filter(t => !(t.leftover && !t.completed));
+  const submit = (e) => { e.preventDefault(); const v = input.trim(); if (!v) return; onAdd(v); setInput(''); };
+
+  const renderTask = (task) => (
+    <TaskRow key={task.id} task={task} dKey={dKey} lists={lists}
+      onToggle={() => onToggle(dKey, task.id)}
+      onEdit={(id, text) => onEdit(dKey, id, text)}
+      onDelete={() => onDelete(dKey, task.id)}
+      onStart={() => onStart(dKey, task.id)}
+      onPause={() => onPause(dKey, task.id)}
+      onFocus={(t) => onFocus(dKey, t)}
+      onOpenActionMenu={onOpenActionMenu}
+      onMoveToTomorrow={onMoveToTomorrow}
+      onMoveToSomeday={onMoveToSomeday}
+      onPickDate={onPickDate}
+      onMoveToList={onMoveToList}
+      highlighted={topThreeIds.includes(task.id)}
+      dragHandlers={{ onDragStart: () => {}, onDragEnd: () => {} }} />
+  );
+
+  const panel = { background: '#FFFDF9', border: `2px solid ${palette.ink}`, borderRadius: 12, boxShadow: palette.softShadowStrong, overflow: 'hidden' };
+  const dot = (bg) => ({ width: 10, height: 10, borderRadius: 999, background: bg, border: `1.5px solid ${palette.ink}` });
+  const barName = { flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink };
+
+  return (
+    <div className="flex flex-col md:flex-row gap-4 md:gap-5 items-start">
+      {/* LEFT — to-do */}
+      <div className="w-full md:flex-1" style={panel}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#FFB3DE', borderBottom: `2px solid ${palette.ink}` }}>
+          <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#FF6FB5')} /><span style={dot('#FCD93D')} /><span style={dot('#9B5CFF')} /></span>
+          <span style={barName}>To-do — {fmtDate(date)}</span>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '1.05rem', color: palette.accent }}>★</span>
+        </div>
+        <div className="px-4 py-4">
+          {leftover.length > 0 && (
+            <div className="mb-4" style={{ background: '#FFF6D6', border: '1.5px solid #E8C84A', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: '#9A6B00', marginBottom: 4 }}>↩ Leftover</div>
+              <div className="space-y-0.5">{leftover.map(renderTask)}</div>
+            </div>
+          )}
+          <div className="space-y-0.5">{rest.map(renderTask)}</div>
+          <form onSubmit={submit} className="pt-2">
+            <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="+ add a task"
+              className="w-full bg-transparent outline-none text-[0.875rem] py-1"
+              style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }} />
+          </form>
+        </div>
+      </div>
+
+      {/* RIGHT — calendar */}
+      <div className="w-full md:flex-1" style={panel}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}` }}>
+          <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#9B5CFF')} /><span style={dot('#3FB8DE')} /></span>
+          <span style={barName}>Calendar</span>
+        </div>
+        <div className="px-4 py-4">
+          {events.length === 0 ? (
+            <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.05rem', color: palette.ink3 }}>Nothing on the calendar today.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {events.map((ev) => {
+                const isWork = ev.source === 'Work';
+                const isPersonal = ev.source === 'Personal';
+                const pillBg = isWork ? palette.eventWorkBg : isPersonal ? palette.eventPersonalBg : palette.accentSofter;
+                return (
+                  <div key={`${ev.sourceEmail}-${ev.calendarId}-${ev.id}`} className="group flex items-start gap-2 px-2 py-1.5 rounded" style={{ background: pillBg }}>
+                    <span style={{ fontFamily: 'VT323, monospace', fontSize: '1rem', color: palette.accent, minWidth: 56, flexShrink: 0 }}>
+                      {ev.allDay ? 'all day' : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}
+                    </span>
+                    <a href={ev.htmlLink} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0" style={{ textDecoration: 'none' }}>
+                      <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8125rem', fontWeight: 500, color: palette.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
+                      {ev.location && <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.6875rem', color: palette.ink3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.location}</div>}
+                    </a>
+                    {onDeleteEvent && (
+                      <button onClick={(e) => { e.stopPropagation(); onDeleteEvent(ev); }} className="md:opacity-0 md:group-hover:opacity-60 hover:opacity-100 transition-opacity p-0.5 flex-shrink-0" style={{ color: palette.ink2, opacity: 0.5 }} title="Delete event from Google Calendar" aria-label="Delete event"><X size={12} /></button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 //  MAIN APP
 // ============================================================
 export default function AlignApp() {
@@ -1069,7 +1165,7 @@ export default function AlignApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list' | 'focus'
+  const [viewMode, setViewMode] = useState('today'); // 'today' | 'grid' | 'list' | 'focus'
   const [appMode, setAppMode] = useState('plan'); // 'plan' (week planner) | 'os' (operating system)
   // Day shown in the "focus" view's top block. Strip below shows focusDay+1..+4.
   const [focusDay, setFocusDay] = useState(today0());
@@ -1211,6 +1307,18 @@ export default function AlignApp() {
 
   const todayKey = dateKey(today0());
   const todayTasks = s.tasks[todayKey] || [];
+
+  // Roll yesterday's (and older) unfinished tasks into today's Leftover — once per day.
+  useEffect(() => {
+    if (!s.loaded) return;
+    let last = null;
+    try { last = localStorage.getItem('align_last_rollover'); } catch {}
+    if (last === todayKey) return;
+    (async () => {
+      await s.rolloverIncomplete(todayKey);
+      try { localStorage.setItem('align_last_rollover', todayKey); } catch {}
+    })();
+  }, [s.loaded, todayKey]);
 
   const suggestions = useMemo(() => {
     const out = [];
@@ -1417,12 +1525,12 @@ export default function AlignApp() {
               className="p-1.5 rounded transition-colors hover:bg-black/[0.04]" style={{ color: palette.ink2 }}><ChevronRight size={16} /></button>
             <button onClick={() => setWeekStart(startOfWeek(today0()))} className="px-3 py-1 rounded transition-colors hover:bg-black/[0.04]"
               style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink2, fontWeight: 500 }}>This week</button>
-            {/* View mode toggle: grid → list → focus → grid */}
-            <button onClick={() => setViewMode(v => v === 'grid' ? 'list' : v === 'list' ? 'focus' : 'grid')}
+            {/* View mode toggle: today → grid → list → focus → today */}
+            <button onClick={() => setViewMode(v => v === 'today' ? 'grid' : v === 'grid' ? 'list' : v === 'list' ? 'focus' : 'today')}
               className="p-1.5 rounded transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }}
-              title={viewMode === 'grid' ? 'Switch to list view' : viewMode === 'list' ? 'Switch to focus view' : 'Switch to grid view'}>
-              {viewMode === 'grid' ? <LayoutList size={14} /> : viewMode === 'list' ? <CalendarDays size={14} /> : <LayoutGrid size={14} />}
+              title={viewMode === 'today' ? 'Switch to week grid' : viewMode === 'grid' ? 'Switch to list view' : viewMode === 'list' ? 'Switch to focus view' : 'Switch to today view'}>
+              {viewMode === 'today' ? <LayoutGrid size={14} /> : viewMode === 'grid' ? <LayoutList size={14} /> : viewMode === 'list' ? <CalendarDays size={14} /> : <ListTodo size={14} />}
             </button>
             {/* Manual events refresh — pulls from Google Calendar immediately. */}
             <button onClick={() => refetchEventsRef.current && refetchEventsRef.current()}
@@ -1467,7 +1575,25 @@ export default function AlignApp() {
 
         {/* Week container: hide on mobile when Lists tab is active */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
-        {viewMode === 'focus' ? (
+        {viewMode === 'today' ? (
+          <TodayView
+            date={today0()}
+            tasks={todayTasks}
+            events={eventsByDate[todayKey] || []}
+            lists={s.lists}
+            topThreeIds={topThreeIds}
+            onAdd={(text) => s.addTask(todayKey, text)}
+            onToggle={s.toggleTask} onEdit={s.editTask} onDelete={s.deleteTask}
+            onStart={s.startTask} onPause={s.pauseTask}
+            onFocus={(dKey, task) => setFocusTask({ dKey, task })}
+            onOpenActionMenu={(task, dKey) => setActionMenuTask({ task, dKey })}
+            onMoveToTomorrow={(task, dKey) => moveTaskToOffset(dKey, task.id, 1)}
+            onMoveToSomeday={(task, dKey) => moveTaskToSomeday(dKey, task.id)}
+            onPickDate={(task, dKey, toDate) => s.moveTaskBetweenDays(dKey, toDate, task.id)}
+            onMoveToList={(task, dKey, listId) => s.moveTaskToList(dKey, task.id, listId)}
+            onDeleteEvent={setEventToDelete}
+          />
+        ) : viewMode === 'focus' ? (
           <div ref={weekGridRef}>
             {/* FOCUS DAY (top block) */}
             <div className="mb-8">
