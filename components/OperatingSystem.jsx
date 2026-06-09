@@ -341,7 +341,7 @@ export default function OperatingSystem({ userId }) {
   // Pink grid desktop background.
   const desktopBg = {
     padding: 16, borderRadius: 14,
-    backgroundColor: '#FDF1F9',
+    backgroundColor: '#FEF7FC',
     backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
     backgroundSize: '22px 22px',
     border: `2px solid ${C.edge}`,
