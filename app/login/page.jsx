@@ -43,166 +43,165 @@ export default function LoginPage() {
 
   const inputStyle = {
     width: '100%',
-    padding: '0.75rem 1rem',
+    padding: '0.7rem 0.85rem',
     fontFamily: 'Inter Tight, sans-serif',
-    fontSize: '0.95rem',
-    color: '#1B1813',
-    background: '#FAFAFA',
-    border: '1px solid #EAEAEA',
+    fontSize: '1rem',
+    color: '#4A2E7A',
+    background: '#FFFFFF',
+    border: '2px solid #4A2E7A',
     borderRadius: '8px',
     outline: 'none',
-    marginBottom: '0.75rem',
+    marginBottom: '0.7rem',
   };
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..600,30..100&family=Inter+Tight:wght@400;500;600;700&display=swap');
-      `}</style>
-      <div style={{ maxWidth: 360, width: '100%' }}>
-        <h1 style={{
-          fontFamily: 'Fraunces, serif',
-          fontSize: '2.75rem',
-          fontWeight: 400,
-          letterSpacing: '-0.035em',
-          color: '#1B1813',
-          textAlign: 'center',
-          fontVariationSettings: "'SOFT' 100, 'opsz' 144",
-          marginBottom: '0.5rem',
-        }}>align</h1>
-        <p style={{
-          fontFamily: 'Fraunces, serif',
-          fontStyle: 'italic',
-          fontSize: '0.95rem',
-          color: '#9A917F',
-          textAlign: 'center',
-          marginBottom: '2.5rem',
-        }}>Sign in to sync across your devices.</p>
+  const btnStyle = {
+    width: '100%',
+    padding: '0.72rem 1rem',
+    background: '#FF5FB0',
+    color: 'white',
+    border: '2px solid #4A2E7A',
+    borderRadius: '9px',
+    boxShadow: '2px 2px 0 rgba(91,62,142,0.28)',
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    opacity: loading ? 0.6 : 1,
+  };
 
-        {sent ? (
-          <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-            <p style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', color: '#1B1813', marginBottom: '0.5rem' }}>
-              Check your email.
-            </p>
-            <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', color: '#5C5448' }}>
-              We sent a sign-in link to <strong>{email}</strong>.
-            </p>
+  const toggleStyle = {
+    display: 'block',
+    margin: '1rem auto 0',
+    background: 'none',
+    border: 'none',
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.82rem',
+    color: '#8B6FB8',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+  };
+
+  const errorStyle = {
+    fontFamily: 'Inter Tight, sans-serif',
+    fontSize: '0.8rem',
+    color: '#C0392B',
+    marginTop: '0.75rem',
+    textAlign: 'center',
+  };
+
+  const dot = (bg) => ({ width: 10, height: 10, borderRadius: 999, background: bg, border: '1.5px solid #4A2E7A' });
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#FEF7FC',
+      backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+      backgroundSize: '22px 22px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem',
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter+Tight:wght@400;500;600;700&display=swap');
+      `}</style>
+
+      <div style={{
+        maxWidth: 360,
+        width: '100%',
+        background: '#FFFDF9',
+        border: '2px solid #4A2E7A',
+        borderRadius: 12,
+        boxShadow: '4px 4px 0 rgba(91,62,142,0.20)',
+        overflow: 'hidden',
+      }}>
+        {/* title bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#FFB3DE', borderBottom: '2px solid #4A2E7A' }}>
+          <span style={{ display: 'inline-flex', gap: 5 }}>
+            <span style={dot('#FF6FB5')} /><span style={dot('#FCD93D')} /><span style={dot('#9B5CFF')} />
+          </span>
+          <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#4A2E7A' }}>WELCOME.EXE</span>
+        </div>
+
+        <div style={{ padding: '30px 26px 26px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, marginBottom: 6 }}>
+            <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '1.25rem', color: '#4A2E7A', lineHeight: 1 }}>align</span>
+            <span style={{ color: '#FF5FB0', fontSize: '1.1rem' }}>✦</span>
           </div>
-        ) : mode === 'password' ? (
-          <form onSubmit={submitPassword}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoFocus
-              required
-              style={inputStyle}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="password"
-              required
-              style={inputStyle}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                background: '#7CA481',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-            {error && (
-              <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8rem', color: '#a8493a', marginTop: '0.75rem', textAlign: 'center' }}>
-                {error}
+          <p style={{
+            fontFamily: 'VT323, monospace',
+            fontSize: '1.2rem',
+            color: '#8B6FB8',
+            textAlign: 'center',
+            letterSpacing: '0.03em',
+            marginBottom: '1.9rem',
+          }}>Sign in to sync across your devices.</p>
+
+          {sent ? (
+            <div style={{ textAlign: 'center', padding: '1.25rem 0' }}>
+              <p style={{ fontFamily: 'VT323, monospace', fontSize: '1.6rem', color: '#4A2E7A', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '0.4rem' }}>
+                Check your email
               </p>
-            )}
-            <button
-              type="button"
-              onClick={() => { setMode('magic'); setError(''); }}
-              style={{
-                display: 'block',
-                margin: '1rem auto 0',
-                background: 'none',
-                border: 'none',
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.8rem',
-                color: '#9A917F',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-              }}
-            >
-              Send a magic link instead
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={submitMagic}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoFocus
-              required
-              style={inputStyle}
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                background: '#7CA481',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              {loading ? 'Sending…' : 'Send sign-in link'}
-            </button>
-            {error && (
-              <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8rem', color: '#a8493a', marginTop: '0.75rem', textAlign: 'center' }}>
-                {error}
+              <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', color: '#8B6FB8' }}>
+                We sent a sign-in link to <strong style={{ color: '#4A2E7A' }}>{email}</strong>.
               </p>
-            )}
-            <button
-              type="button"
-              onClick={() => { setMode('password'); setError(''); }}
-              style={{
-                display: 'block',
-                margin: '1rem auto 0',
-                background: 'none',
-                border: 'none',
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.8rem',
-                color: '#9A917F',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-              }}
-            >
-              Use password instead
-            </button>
-          </form>
-        )}
+            </div>
+          ) : mode === 'password' ? (
+            <form onSubmit={submitPassword}>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoFocus
+                required
+                style={inputStyle}
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="password"
+                required
+                style={inputStyle}
+              />
+              <button type="submit" disabled={loading} style={btnStyle}>
+                {loading ? 'Signing in…' : 'Sign in'}
+              </button>
+              {error && <p style={errorStyle}>{error}</p>}
+              <button
+                type="button"
+                onClick={() => { setMode('magic'); setError(''); }}
+                style={toggleStyle}
+              >
+                Send a magic link instead
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={submitMagic}>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoFocus
+                required
+                style={inputStyle}
+              />
+              <button type="submit" disabled={loading} style={btnStyle}>
+                {loading ? 'Sending…' : 'Send sign-in link'}
+              </button>
+              {error && <p style={errorStyle}>{error}</p>}
+              <button
+                type="button"
+                onClick={() => { setMode('password'); setError(''); }}
+                style={toggleStyle}
+              >
+                Use password instead
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
