@@ -10,16 +10,16 @@ const CALENDAR_WRITE_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 const palette = {
   bg: '#FFFFFF',
-  bgRaised: '#FAFAFA',
-  ink: '#1B1813',
-  ink2: '#5C5448',
-  ink3: '#9A917F',
-  border: '#EAEAEA',
-  borderSoft: '#F2F2F2',
-  accent: '#7CA481',
-  accentSoft: 'rgba(124,164,129,0.10)',
-  warn: '#C9824A',
-  warnSoft: 'rgba(201,130,74,0.10)',
+  bgRaised: '#FBF1FA',
+  ink: '#4A2E7A',
+  ink2: '#8B6FB8',
+  ink3: '#B49ED6',
+  border: '#B59BD8',
+  borderSoft: '#ECE0F8',
+  accent: '#FF5FB0',
+  accentSoft: 'rgba(255,95,176,0.14)',
+  warn: '#9B5CFF',
+  warnSoft: 'rgba(155,92,255,0.14)',
 };
 
 export default function SettingsDrawer({ open, onClose, user, textScale = 'default', onTextScaleChange }) {
@@ -297,7 +297,7 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
       <div
         className="fixed inset-0 z-30 transition-opacity"
         style={{
-          background: 'rgba(27,24,19,0.15)',
+          background: 'rgba(91,62,142,0.22)',
           opacity: open ? 1 : 0,
           pointerEvents: open ? 'auto' : 'none',
         }}
@@ -308,25 +308,29 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
         style={{
           width: 460,
           maxWidth: '95vw',
-          background: palette.bgRaised,
-          borderLeft: `1px solid ${palette.border}`,
+          background: '#FFFDF9',
+          borderLeft: `2px solid ${palette.ink}`,
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transitionDuration: '420ms',
           transitionTimingFunction: 'cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        <div className="px-6 pt-6 pb-4 flex items-center justify-between" style={{ borderBottom: `1px solid ${palette.borderSoft}` }}>
-          <div>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', color: palette.ink, fontVariationSettings: "'opsz' 144", letterSpacing: '-0.02em' }}>
-              Settings
-            </h2>
-            <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink3, marginTop: 2 }}>
-              Connect calendar feeds.
-            </p>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-black/[0.04] rounded" style={{ color: palette.ink2 }}>
-            <X size={16} />
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}`, flexShrink: 0 }}>
+          <span style={{ display: 'inline-flex', gap: 5 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FF6FB5', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FCD93D', border: `1.5px solid ${palette.ink}` }} />
+            <span style={{ width: 10, height: 10, borderRadius: 999, background: '#9B5CFF', border: `1.5px solid ${palette.ink}` }} />
+          </span>
+          <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink }}>SETTINGS.SYS</span>
+          <button onClick={onClose} style={{ width: 18, height: 16, borderRadius: 2, border: `1.5px solid ${palette.ink}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: palette.ink }}><X size={11} /></button>
+        </div>
+        <div className="px-6 pt-4 pb-4" style={{ borderBottom: `2px solid ${palette.borderSoft}`, flexShrink: 0 }}>
+          <h2 style={{ fontFamily: 'VT323, monospace', fontSize: '1.6rem', textTransform: 'uppercase', color: palette.ink, letterSpacing: '0.03em' }}>
+            Settings
+          </h2>
+          <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink3, marginTop: 2 }}>
+            Connect calendar feeds.
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -361,7 +365,7 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
               </h3>
             </div>
             <p style={{
-              fontFamily: 'Fraunces, serif',
+              fontFamily: 'VT323, monospace',
               fontStyle: 'italic',
               fontSize: '0.85rem',
               color: palette.ink3,
@@ -390,7 +394,7 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
                     }}
                     aria-pressed={active}
                   >
-                    <span style={{ fontFamily: 'Fraunces, serif', fontSize: opt.sample, lineHeight: 1, fontVariationSettings: "'opsz' 144" }}>Aa</span>
+                    <span style={{ fontFamily: 'VT323, monospace', fontSize: opt.sample, lineHeight: 1, fontVariationSettings: "'opsz' 144" }}>Aa</span>
                     <span style={{ fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.05em' }}>{opt.label}</span>
                   </button>
                 );
@@ -412,7 +416,7 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
             </p>
 
             {googleLoading ? (
-              <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>
+              <p style={{ fontFamily: 'VT323, monospace', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>
                 Loading…
               </p>
             ) : (
@@ -590,7 +594,7 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
             </div>
 
             {loading ? (
-              <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>
+              <p style={{ fontFamily: 'VT323, monospace', fontStyle: 'italic', fontSize: '0.9rem', color: palette.ink3 }}>
                 Loading…
               </p>
             ) : (
