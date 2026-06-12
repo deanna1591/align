@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase-client';
 import UnshapedDaily from '@/components/UnshapedDaily';
 import PhotoBooth from '@/components/PhotoBooth';
 import StickerLayer from '@/components/StickerLayer';
+import IPod from '@/components/IPod';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
@@ -2079,6 +2080,7 @@ export default function AlignApp() {
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
       <StickerLayer />
       <PhotoBooth />
+      <IPod />
       <QuickCaptureDrawer
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
