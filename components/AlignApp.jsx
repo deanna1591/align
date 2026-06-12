@@ -10,6 +10,7 @@ import {
 import { useStorage } from '@/lib/useStorage';
 import { createClient } from '@/lib/supabase-client';
 import UnshapedDaily from '@/components/UnshapedDaily';
+import PhotoBooth from '@/components/PhotoBooth';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
@@ -1154,8 +1155,9 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
         </div>
       </div>
 
-      {/* RIGHT — calendar */}
-      <div className="w-full md:flex-1" style={panel}>
+      {/* RIGHT — calendar + photobooth */}
+      <div className="w-full md:flex-1 min-w-0 flex flex-col gap-4 md:gap-5">
+      <div style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}` }}>
           <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#9B5CFF')} /><span style={dot('#3FB8DE')} /></span>
           <span style={barName}>Calendar</span>
@@ -1191,6 +1193,8 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
             </div>
           )}
         </div>
+      </div>
+      <PhotoBooth />
       </div>
     </div>
   );
