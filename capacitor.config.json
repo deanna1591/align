@@ -1,0 +1,11 @@
+{
+  "appId": "com.realign.align",
+  "appName": "Align",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "plugins": {},
+  "server": {
+    "url": "https://app.realign.day",
+    "cleartext": false
+  }
+}

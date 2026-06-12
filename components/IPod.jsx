@@ -22,7 +22,7 @@ function parsePlaylist(link) {
   return u ? link : null;
 }
 
-export default function IPod() {
+export default function IPod({ hidden = false }) {
   const [mounted, setMounted] = useState(false);
   const [pos, setPos] = useState({ xp: 4, y: 420 });
   const [minimized, setMinimized] = useState(false);
@@ -143,6 +143,7 @@ export default function IPod() {
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}
       style={{
         position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 33,
+        display: hidden ? 'none' : undefined,
         width: minimized ? 120 : 'min(252px, calc(100vw - 24px))',
         background: 'linear-gradient(160deg, #FFFFFF 0%, #F2F3F6 70%, #E8EAEF 100%)',
         border: `2px solid ${INK}`, borderRadius: 18, boxShadow: SHADOW,

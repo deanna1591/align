@@ -1371,6 +1371,24 @@ export default function AlignApp() {
     });
   }, [s.loaded, todayKey, s.rolloverIncomplete]);
 
+  // Floating windows (pod/booth): summoned from the dock. Default visible on
+  // desktop, hidden on phones, remembered per device.
+  const [floats, setFloats] = useState(null);
+  useEffect(() => {
+    let v = null;
+    try { v = JSON.parse(localStorage.getItem('align_floats') || 'null'); } catch {}
+    if (!v || typeof v.ipod !== 'boolean') {
+      const desktop = window.matchMedia('(min-width: 768px)').matches;
+      v = { ipod: desktop, booth: desktop };
+    }
+    setFloats(v);
+  }, []);
+  const toggleFloat = (key) => setFloats(f => {
+    const next = { ...f, [key]: !f[key] };
+    try { localStorage.setItem('align_floats', JSON.stringify(next)); } catch {}
+    return next;
+  });
+
   const suggestions = useMemo(() => {
     const out = [];
     const staleCount = Object.entries(s.tasks).reduce((acc, [k, list]) => {
@@ -2078,9 +2096,9 @@ export default function AlignApp() {
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
-      <StickerLayer />
-      <PhotoBooth />
-      <IPod />
+      <StickerLayer dock={floats ? { ipod: floats.ipod, booth: floats.booth, onToggle: toggleFloat } : null} />
+      {floats && <PhotoBooth hidden={!floats.booth} />}
+      {floats && <IPod hidden={!floats.ipod} />}
       <QuickCaptureDrawer
         open={quickOpen}
         onClose={() => setQuickOpen(false)}

@@ -340,10 +340,11 @@ function StickerArt({ kind, scale = 1 }) {
 }
 
 // ---------- the layer ----------
-export default function StickerLayer() {
+export default function StickerLayer({ dock = null }) {
   const [userId, setUserId] = useState(null);
   const [items, setItems] = useState([]);
   const [trayOpen, setTrayOpen] = useState(false);
+  const [dockOpen, setDockOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [mounted, setMounted] = useState(false);
   const dragRef = useRef(null); // {id, startX, startY, origXPct, origYPct, moved}
@@ -471,14 +472,54 @@ export default function StickerLayer() {
       </div>,
       document.body)}
 
-      {/* tray button — bottom left */}
-      <button onClick={() => setTrayOpen(o => !o)} title="Stickers"
+      {/* dock button — bottom left */}
+      <button onClick={() => { if (dock) { setDockOpen(o => !o); setTrayOpen(false); } else { setTrayOpen(o => !o); } }} title="Dock"
         style={{
           position: 'fixed', left: 14, bottom: 'calc(14px + env(safe-area-inset-bottom))', zIndex: 36,
           width: 46, height: 46, borderRadius: 999, background: C.sun, color: C.ink,
           border: `2px solid ${C.ink}`, boxShadow: C.shadowStrong, cursor: 'pointer',
           fontFamily: 'VT323, monospace', fontSize: 22, lineHeight: '40px',
         }}>✦</button>
+
+      {/* DOCK.EXE — choose your floating toys */}
+      {dockOpen && dock && (
+        <div style={{
+          position: 'fixed', left: 12, bottom: 'calc(68px + env(safe-area-inset-bottom))', zIndex: 60,
+          width: 'min(250px, 92vw)', background: C.card, border: `2px solid ${C.ink}`,
+          borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: C.sun, borderBottom: `2px solid ${C.ink}` }}>
+            <span style={{ display: 'inline-flex', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 999, background: '#FF6FB5', border: `1.5px solid ${C.ink}` }} />
+              <span style={{ width: 10, height: 10, borderRadius: 999, background: '#9B5CFF', border: `1.5px solid ${C.ink}` }} />
+            </span>
+            <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: C.ink }}>Dock.exe</span>
+            <button onClick={() => setDockOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'VT323, monospace', fontSize: '1.1rem', color: C.ink2 }}>✕</button>
+          </div>
+          <div style={{ padding: 8 }}>
+            {[
+              { icon: '✂', label: 'stickers', action: () => { setDockOpen(false); setTrayOpen(true); }, state: null },
+              { icon: '♪', label: 'pod.exe', action: () => dock.onToggle('ipod'), state: dock.ipod },
+              { icon: '★', label: 'photobooth.exe', action: () => dock.onToggle('booth'), state: dock.booth },
+            ].map(row => (
+              <button key={row.label} onClick={row.action}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', borderRadius: 8, padding: '10px 8px', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ fontFamily: 'VT323, monospace', fontSize: 18, color: C.ink, width: 20, textAlign: 'center' }}>{row.icon}</span>
+                <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.05rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: C.ink }}>{row.label}</span>
+                {row.state === null ? (
+                  <span style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: 11, fontWeight: 600, color: C.ink3 }}>open ▸</span>
+                ) : (
+                  <span style={{
+                    fontFamily: 'Inter Tight, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                    padding: '3px 9px', borderRadius: 999, border: `1.5px solid ${C.ink}`,
+                    background: row.state ? '#7DD87F' : '#fff', color: C.ink,
+                  }}>{row.state ? 'ON' : 'OFF'}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* the tray */}
       {trayOpen && (

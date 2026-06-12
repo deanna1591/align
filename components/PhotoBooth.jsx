@@ -34,7 +34,7 @@ function tiltFor(id) {
 }
 const PIN_COLORS = ['#FF5FB0', '#FCD93D', '#9B5CFF', '#3FB8DE'];
 
-export default function PhotoBooth() {
+export default function PhotoBooth({ hidden = false }) {
   const [userId, setUserId] = useState(null);
   const [stage, setStage] = useState('idle'); // idle | live | shooting | printing
   const [count, setCount] = useState(null);   // 3,2,1 overlay
@@ -94,6 +94,17 @@ export default function PhotoBooth() {
   const toggleMin = () => {
     setMinimized(m => { saveWin({ ...pos, min: !m }); return !m; });
   };
+
+  // When the dock hides the booth, make sure the camera is released.
+  useEffect(() => {
+    if (hidden) {
+      stopCamera();
+      setStage('idle');
+      setCount(null);
+      setShotNum(0);
+      setFlash(false);
+    }
+  }, [hidden, stopCamera]);
 
   // ---------- data ----------
   useEffect(() => {
@@ -284,7 +295,7 @@ export default function PhotoBooth() {
   if (!userId || !mounted) return null;
 
   return createPortal(
-    <div style={{ position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 34, width: 'min(380px, calc(100vw - 20px))', background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 34, width: 'min(380px, calc(100vw - 20px))', display: hidden ? 'none' : undefined, background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>
       <style>{`
         @keyframes pbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
         @keyframes pbPrint { from{ transform: translateY(-115%);} to{ transform: translateY(0);} }
