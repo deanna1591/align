@@ -202,8 +202,8 @@ export default function UnshapedDaily({ userId }) {
 
       {/* ---------- REFLECTION DRAWER ---------- */}
       {open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(54,33,92,0.32)', zIndex: 80, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '88vh', overflowY: 'auto', background: C.card, border: `2px solid ${C.ink}`, borderTopLeftRadius: 14, borderTopRightRadius: 14, boxShadow: C.shadowStrong }}>
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(54,33,92,0.32)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '86vh', overflowY: 'auto', background: C.card, border: `2px solid ${C.ink}`, borderRadius: 14, boxShadow: C.shadowStrong }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${C.ink}` }}>
               <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot(C.warm)} /><span style={dot('#3FB8DE')} /></span>
               <span style={{ flex: 1, ...vt('1.1rem', C.ink) }}>Day_{entry.day} · reflect</span>
