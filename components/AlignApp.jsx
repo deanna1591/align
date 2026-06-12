@@ -767,7 +767,7 @@ function FocusStrip({ todayTasks, stats, suggestions, onSelectFocus, currentFocu
   return (
     <div className="sticky top-0 z-20 backdrop-blur-md"
       style={{ background: 'rgba(255,255,255,0.85)', borderBottom: `1px solid ${palette.borderSoft}` }}>
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 md:py-3">
+      <div className="max-w-[1880px] mx-auto px-4 md:px-8 py-2 md:py-3">
         {/* MOBILE: single compact row with progress · streak (or completion line) */}
         <div className="flex md:hidden items-center justify-between gap-3">
           {allDone && completionQuote ? (
@@ -1516,7 +1516,7 @@ export default function AlignApp() {
         onSelectFocus={(t) => setFocusTask({ dKey: todayKey, task: t })}
         currentFocus={focusTask?.task} />
 
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
+      <div className="max-w-[1880px] mx-auto px-4 md:px-8 pt-6 md:pt-10 pb-20">
         <header className="flex items-start justify-between mb-6 md:mb-8 flex-wrap gap-3 md:gap-4">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline gap-4">
@@ -1938,11 +1938,10 @@ export default function AlignApp() {
         </div>
 
         {/* Left over: incomplete tasks from previous days */}
-        {/* Left over (left) + PHOTOBOOTH.EXE (right) — side by side on large screens */}
-        <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
-          <div className="mt-10 flex flex-col lg:flex-row gap-5 items-start">
-          {leftoverCount > 0 && (
-            <div className="w-full max-w-[640px] lg:flex-1" style={{ background: '#FFFDF9', border: '2px solid #C9B8E6', borderRadius: 10, boxShadow: '2px 2px 0 rgba(91,62,142,0.10)', overflow: 'hidden' }}>
+        {/* Left over: incomplete tasks from previous days */}
+        {leftoverCount > 0 && (
+          <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
+            <div className="mt-10 max-w-[640px]" style={{ background: '#FFFDF9', border: '2px solid #C9B8E6', borderRadius: 10, boxShadow: '2px 2px 0 rgba(91,62,142,0.10)', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: '#ECE0F8', borderBottom: '2px solid #C9B8E6' }}>
                 <span style={{ display: 'inline-flex', gap: 5 }}>
                   <span style={{ width: 9, height: 9, borderRadius: 999, background: '#D8C7F0', border: '1.5px solid #C9B8E6' }} />
@@ -1994,12 +1993,8 @@ export default function AlignApp() {
                 })}
               </div>
             </div>
-          )}
-            <div className="w-full lg:flex-1 lg:max-w-[560px]" style={{ marginTop: leftoverCount > 0 ? 0 : undefined }}>
-              <PhotoBooth />
-            </div>
           </div>
-        </div>
+        )}
 
         {/* Someday: tasks with no date — appears between the week grid and Lists */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
@@ -2083,6 +2078,7 @@ export default function AlignApp() {
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
       <StickerLayer />
+      <PhotoBooth />
       <QuickCaptureDrawer
         open={quickOpen}
         onClose={() => setQuickOpen(false)}

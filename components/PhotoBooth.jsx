@@ -7,6 +7,7 @@
 // in a private Supabase bucket (signed URLs) and persist forever.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase-client';
 
 const C = {
@@ -48,6 +49,51 @@ export default function PhotoBooth() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const cancelRef = useRef(false);
+
+  // ---------- floating window: drag anywhere, pinned to the page ----------
+  // Position is per-device (localStorage): x as % of page width, y in page px.
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState({ xp: 72, y: 340 });
+  const [minimized, setMinimized] = useState(false);
+  const winDragRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const saved = JSON.parse(localStorage.getItem('align_booth_win') || 'null');
+      if (saved && typeof saved.xp === 'number') {
+        setPos({
+          xp: Math.min(96, Math.max(0, saved.xp)),
+          y: Math.max(60, saved.y || 340),
+        });
+        setMinimized(!!saved.min);
+      }
+    } catch {}
+  }, []);
+
+  const saveWin = (next) => {
+    try { localStorage.setItem('align_booth_win', JSON.stringify(next)); } catch {}
+  };
+
+  const onBarPointerDown = (e) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    winDragRef.current = { startX: e.clientX, startY: e.clientY, origXp: pos.xp, origY: pos.y };
+  };
+  const onBarPointerMove = (e) => {
+    const d = winDragRef.current;
+    if (!d) return;
+    const xp = Math.min(96, Math.max(-30, d.origXp + ((e.clientX - d.startX) / window.innerWidth) * 100));
+    const y = Math.max(60, d.origY + (e.clientY - d.startY));
+    setPos({ xp, y });
+  };
+  const onBarPointerUp = () => {
+    if (!winDragRef.current) return;
+    winDragRef.current = null;
+    setPos(p => { saveWin({ ...p, min: minimized }); return p; });
+  };
+  const toggleMin = () => {
+    setMinimized(m => { saveWin({ ...pos, min: !m }); return !m; });
+  };
 
   // ---------- data ----------
   useEffect(() => {
@@ -235,10 +281,10 @@ export default function PhotoBooth() {
     setLightbox(null);
   };
 
-  if (!userId) return null;
+  if (!userId || !mounted) return null;
 
-  return (
-    <div style={{ background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>
+  return createPortal(
+    <div style={{ position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 34, width: 'min(380px, calc(100vw - 20px))', background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>
       <style>{`
         @keyframes pbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
         @keyframes pbPrint { from{ transform: translateY(-115%);} to{ transform: translateY(0);} }
@@ -248,14 +294,21 @@ export default function PhotoBooth() {
         .pbCount { animation: pbPop .85s ease-out; }
       `}</style>
 
-      {/* title bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: C.sky, borderBottom: `2px solid ${C.ink}` }}>
+      {/* title bar — drag me */}
+      <div onPointerDown={onBarPointerDown} onPointerMove={onBarPointerMove} onPointerUp={onBarPointerUp}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: C.sky, borderBottom: minimized ? 'none' : `2px solid ${C.ink}`, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}>
         <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#FF6FB5')} /><span style={dot(C.sun)} /></span>
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...vt('1.12rem', C.ink) }}>Photobooth.exe</span>
         {stage === 'live' || stage === 'shooting'
           ? <span style={{ ...vt('0.95rem', '#C0392B'), animation: 'pbPulse 1.2s infinite' }}>●REC</span>
           : <span style={vt('0.95rem', C.ink2)}>{strips.length} strip{strips.length === 1 ? '' : 's'}</span>}
+        <button onClick={toggleMin} onPointerDown={(e) => e.stopPropagation()} title={minimized ? 'Expand' : 'Minimize'}
+          style={{ background: 'none', border: `1.5px solid ${C.ink}`, borderRadius: 6, width: 20, height: 20, lineHeight: '15px', cursor: 'pointer', color: C.ink, fontFamily: 'VT323, monospace', fontSize: 14, padding: 0 }}>
+          {minimized ? '+' : '−'}
+        </button>
       </div>
+
+      {!minimized && (
 
       <div style={{ padding: '12px 14px calc(14px + env(safe-area-inset-bottom))' }}>
         {/* ---------- viewfinder / start ---------- */}
@@ -330,6 +383,7 @@ export default function PhotoBooth() {
           </p>
         )}
       </div>
+      )}
 
       {/* ---------- LIGHTBOX ---------- */}
       {lightbox && (
@@ -347,6 +401,7 @@ export default function PhotoBooth() {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
