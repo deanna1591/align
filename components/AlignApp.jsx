@@ -1354,14 +1354,21 @@ export default function AlignApp() {
   const todayKey = dateKey(today0());
   const todayTasks = s.tasks[todayKey] || [];
 
-  // Roll unfinished tasks from past days into today's Leftover. Runs on every
-  // load: rolloverIncomplete is a no-op (no DB write) when nothing qualifies,
-  // so there's no need for a once-per-day gate — and the old localStorage gate
-  // could stamp the day even when the sweep never actually ran.
+  // Roll unfinished tasks from past days into today's Leftover. Re-attempts as
+  // tasks/auth settle (the callback identity changes with them), capped at 3
+  // tries per day so a persistent DB failure can't cause a retry loop.
+  // rolloverIncomplete is a no-op (no DB write) when nothing qualifies.
+  const rolloverRef = useRef({ key: null, tries: 0 });
   useEffect(() => {
     if (!s.loaded) return;
-    s.rolloverIncomplete(todayKey);
-  }, [s.loaded, todayKey]);
+    const r = rolloverRef.current;
+    if (r.key !== todayKey) { r.key = todayKey; r.tries = 0; }
+    if (r.tries >= 3) return;
+    r.tries += 1;
+    s.rolloverIncomplete(todayKey).then(ids => {
+      if (ids?.length) console.log(`[Align] rolled ${ids.length} task(s) into today`);
+    });
+  }, [s.loaded, todayKey, s.rolloverIncomplete]);
 
   const suggestions = useMemo(() => {
     const out = [];
