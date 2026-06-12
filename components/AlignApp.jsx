@@ -11,6 +11,7 @@ import { useStorage } from '@/lib/useStorage';
 import { createClient } from '@/lib/supabase-client';
 import UnshapedDaily from '@/components/UnshapedDaily';
 import PhotoBooth from '@/components/PhotoBooth';
+import StickerLayer from '@/components/StickerLayer';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
@@ -2074,6 +2075,7 @@ export default function AlignApp() {
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
+      <StickerLayer />
       <QuickCaptureDrawer
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
