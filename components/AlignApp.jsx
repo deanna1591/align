@@ -1124,7 +1124,7 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
 
   const panel = { background: '#FFFDF9', border: `2px solid ${palette.ink}`, borderRadius: 12, boxShadow: palette.softShadowStrong, overflow: 'hidden' };
   const dot = (bg) => ({ width: 10, height: 10, borderRadius: 999, background: bg, border: `1.5px solid ${palette.ink}` });
-  const barName = { flex: 1, fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink };
+  const barName = { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'VT323, monospace', fontSize: '1.15rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: palette.ink };
 
   return (
     <div className="flex flex-col md:flex-row gap-4 md:gap-5 items-start">

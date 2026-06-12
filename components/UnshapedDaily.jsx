@@ -62,6 +62,16 @@ export default function UnshapedDaily({ userId }) {
   const [anything, setAnything] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [breath, setBreath] = useState(null); // null = off, 'in' | 'out' while breathing
+
+  // Breathing gate: one slow cycle before the form appears.
+  useEffect(() => {
+    if (!open) { setBreath(null); return; }
+    setBreath('in');
+    const phase = setInterval(() => setBreath(b => (b === 'in' ? 'out' : 'in')), 4000);
+    const done = setTimeout(() => { setBreath(null); clearInterval(phase); }, 8000);
+    return () => { clearInterval(phase); clearTimeout(done); };
+  }, [open]);
 
   useEffect(() => {
     try { setSnoozed(localStorage.getItem('unshaped_snooze') === todayYmd()); } catch {}
@@ -199,14 +209,35 @@ export default function UnshapedDaily({ userId }) {
               <span style={{ flex: 1, ...vt('1.1rem', C.ink) }}>Day_{entry.day} · reflect</span>
               <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', ...vt('1.1rem', C.ink2) }}>✕</button>
             </div>
-            <div style={{ padding: '14px 16px 18px' }}>
+            <div style={{ padding: '14px 16px calc(18px + env(safe-area-inset-bottom))' }}>
+              {breath ? (
+                <div onClick={() => setBreath(null)} style={{ textAlign: 'center', padding: '34px 0 30px', cursor: 'pointer' }}>
+                  <style>{`@keyframes usBreathe { 0% { transform: scale(0.7); } 50% { transform: scale(1.18); } 100% { transform: scale(0.7); } }`}</style>
+                  <div style={{ display: 'inline-block', animation: 'usBreathe 8s ease-in-out infinite' }}>
+                    <svg width="64" height="64" viewBox="0 0 8 8" shapeRendering="crispEdges" aria-hidden="true">
+                      {['01101100','11111110','11111110','11111110','01111100','00111000','00010000','00000000'].flatMap((row, y) =>
+                        row.split('').map((c, x) => c === '1'
+                          ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={C.accent} />
+                          : null)
+                      )}
+                    </svg>
+                  </div>
+                  <div style={{ ...vt('1.3rem', C.ink2), marginTop: 18 }}>
+                    {breath === 'in' ? 'breathe in\u2026' : 'breathe out\u2026'}
+                  </div>
+                  <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', color: C.ink3, marginTop: 8 }}>
+                    one breath before you write · tap to skip
+                  </div>
+                </div>
+              ) : (
+              <>
               <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', fontWeight: 600, color: C.ink, marginBottom: 6 }}>{entry.title}</div>
               <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8rem', color: C.ink2, lineHeight: 1.55, margin: '0 0 8px' }}>{entry.instructions}</p>
               {entry.question && (
                 <p style={{ fontFamily: 'Inter Tight, sans-serif', fontStyle: 'italic', fontSize: '0.8rem', color: C.ink3, margin: '0 0 4px' }}>{entry.question}</p>
               )}
               <div style={qLabel}>What did you notice?</div>
-              <textarea value={noticed} onChange={(e) => setNoticed(e.target.value)} style={input16} autoFocus />
+              <textarea value={noticed} onChange={(e) => setNoticed(e.target.value)} style={input16} />
               <div style={qLabel}>What did you feel?</div>
               <textarea value={felt} onChange={(e) => setFelt(e.target.value)} style={input16} placeholder="one sentence is plenty" />
               <div style={qLabel}>Anything else?</div>
@@ -217,6 +248,8 @@ export default function UnshapedDaily({ userId }) {
                   {saving ? 'saving…' : 'save · day done ✦'}
                 </button>
               </div>
+              </>
+              )}
             </div>
           </div>
         </div>
@@ -231,9 +264,10 @@ export default function UnshapedDaily({ userId }) {
               <span style={{ flex: 1, ...vt('1.1rem', C.ink) }}>Tracker.exe — {doneDays.size}/200{streak > 0 ? ` \u00B7 \uD83D\uDD25${streak}` : ''}</span>
               <button onClick={() => setTracker(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', ...vt('1.1rem', C.ink2) }}>✕</button>
             </div>
-            <div style={{ padding: '14px 16px 18px' }}>
+            <div style={{ padding: '14px 16px calc(18px + env(safe-area-inset-bottom))' }}>
               {/* the 200-pixel habit grid — fills automatically as days complete */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(20, 1fr)', gap: 3, marginBottom: 6 }}>
+              <style>{`.usGrid{display:grid;grid-template-columns:repeat(20,1fr);gap:3px;}@media(max-width:520px){.usGrid{grid-template-columns:repeat(10,1fr);gap:4px;}}`}</style>
+              <div className="usGrid" style={{ marginBottom: 6 }}>
                 {Array.from({ length: 200 }, (_, i) => {
                   const dnum = i + 1;
                   const done = doneDays.has(dnum);
