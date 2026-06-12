@@ -91,19 +91,24 @@ export default function PhotoBooth() {
       });
       streamRef.current = stream;
       setStage('live');
-      // attach after render
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-      });
     } catch (e) {
       setErr(e?.name === 'NotAllowedError'
         ? 'Camera permission was blocked — allow it in your browser settings and try again.'
         : `Couldn't open the camera: ${e?.message || e}`);
     }
   };
+
+  // Attach the stream AFTER the <video> element exists. Setting srcObject in
+  // openBooth raced React's render (the element wasn't mounted yet), which
+  // left the viewfinder black.
+  useEffect(() => {
+    if ((stage === 'live' || stage === 'shooting') && videoRef.current && streamRef.current) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      videoRef.current.play().catch(() => {});
+    }
+  }, [stage]);
 
   const closeBooth = () => { stopCamera(); setStage('idle'); setCount(null); setShotNum(0); };
 
@@ -264,7 +269,7 @@ export default function PhotoBooth() {
         {(stage === 'live' || stage === 'shooting' || stage === 'printing') && (
           <div style={{ marginBottom: 12 }}>
             <div style={{ position: 'relative', border: `2px solid ${C.ink}`, borderRadius: 8, overflow: 'hidden', background: '#14102A', aspectRatio: '4 / 3' }}>
-              <video ref={videoRef} muted playsInline
+              <video ref={videoRef} muted playsInline autoPlay
                 style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', filter: mono ? 'grayscale(1) contrast(1.1)' : 'none', display: stage === 'printing' ? 'none' : 'block' }} />
               {/* scanlines */}
               {stage !== 'printing' && (
