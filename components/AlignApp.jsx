@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useStorage } from '@/lib/useStorage';
 import { createClient } from '@/lib/supabase-client';
+import UnshapedDaily from '@/components/UnshapedDaily';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
@@ -41,9 +42,9 @@ const fmtTime = (s) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 const palette = {
   bg: '#FFFFFF',
   bgRaised: '#FBF1FA',
-  ink: '#4A2E7A',
-  ink2: '#8B6FB8',
-  ink3: '#B49ED6',
+  ink: '#36215C',
+  ink2: '#6E5499',
+  ink3: '#9F88C9',
   border: '#B59BD8',
   borderSoft: '#ECE0F8',
   accent: '#FF5FB0',
@@ -323,6 +324,8 @@ function TaskActionMenu({ task, currentDate, lists, onClose, onMoveToTomorrow, o
             fontSize: '0.95rem',
             color: palette.ink,
             lineHeight: 1.3,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}>{task.text}</p>
         </div>
 
@@ -544,6 +547,8 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
               margin: highlighted ? '-2px -4px' : 0,
               padding: highlighted ? '2px 4px' : 0,
               borderRadius: 3,
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
             }}>{task.text}</div>
         )}
         <div className="flex items-center gap-1 flex-shrink-0 mt-[3px]">
@@ -1475,7 +1480,7 @@ export default function AlignApp() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#FEF7FC',
+      backgroundColor: '#FEFBFD',
       backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
       backgroundSize: '22px 22px',
     }}>
@@ -1664,6 +1669,7 @@ export default function AlignApp() {
 
         {/* Week container: hide on mobile when Lists tab is active */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
+        <UnshapedDaily userId={s.user?.id} />
         {viewMode === 'today' ? (
           <TodayView
             date={today0()}

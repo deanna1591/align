@@ -1,7 +1,8 @@
-// Minimal service worker — enables PWA installability and basic offline.
-// Networked routes (Supabase, auth) always go to network; static assets cached.
+// Service worker — PWA installability + offline shell.
+// v2: API routes are NEVER served from cache (v1 cached /api/google/events,
+// which froze the calendar and made the refresh button look dead).
 
-const CACHE_NAME = 'align-v1';
+const CACHE_NAME = 'align-v2';
 const PRECACHE_URLS = ['/', '/login', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -25,27 +26,40 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
-  // Always go to network for Supabase + auth (data must be fresh).
-  if (url.hostname.includes('supabase.co') || url.pathname.startsWith('/auth')) {
+  // Never intercept cross-origin requests (Supabase, Google, fonts, etc).
+  if (url.origin !== self.location.origin) return;
+
+  // Never intercept API or auth routes — data must always be live.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth')) return;
+
+  // Navigations: network first, cached shell only when offline.
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request).catch(() => caches.match('/')));
     return;
   }
 
-  // For navigation, try network first, fall back to cached root.
-  if (request.mode === 'navigate') {
+  // Hashed build assets are immutable — cache first is safe and fast.
+  if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/'))
+      caches.match(request).then((cached) => cached || fetch(request).then((res) => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(request, clone));
+        }
+        return res;
+      }))
     );
     return;
   }
 
-  // For other assets: cache first, network fallback.
+  // Everything else (icons, manifest, images): network first, cache fallback.
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((res) => {
+    fetch(request).then((res) => {
       if (res.ok && res.type === 'basic') {
         const clone = res.clone();
         caches.open(CACHE_NAME).then((c) => c.put(request, clone));
       }
       return res;
-    }).catch(() => caches.match('/')))
+    }).catch(() => caches.match(request).then((c) => c || caches.match('/')))
   );
 });

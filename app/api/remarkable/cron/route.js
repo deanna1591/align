@@ -25,10 +25,47 @@ function todayInTz(tz) {
   return { key, label };
 }
 
-// Calendar events for the day. Filled in once we share the Google fetch logic
-// with app/api/google/events — returns [] until then (tasks-only agenda).
-async function getTodayEvents(/* userId, tz */) {
-  return [];
+import { fetchEventsForUser } from '@/lib/google-calendar';
+
+// "GMT-07:00" style offset for a timezone on a given date → "-07:00"
+function tzOffset(tz, dateKey) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
+      .formatToParts(new Date(`${dateKey}T12:00:00Z`));
+    const name = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT-07:00';
+    const m = name.match(/GMT([+-]\d{2}:\d{2})/);
+    return m ? m[1] : '-07:00';
+  } catch { return '-07:00'; }
+}
+
+// Calendar events for the user's day, using the same token-refreshing
+// fetch the app itself uses.
+async function getTodayEvents(supa, userId, tz, todayKey) {
+  const off = tzOffset(tz, todayKey);
+  const dayStart = new Date(`${todayKey}T00:00:00${off}`);
+  const dayEnd = new Date(dayStart.getTime() + 24 * 3600 * 1000);
+  try {
+    const { events = [] } = await fetchEventsForUser(supa, userId, dayStart, dayEnd);
+    const todays = events.filter(ev => {
+      if (ev.allDay) return String(ev.start).slice(0, 10) === todayKey;
+      const s = new Date(ev.start);
+      return s >= dayStart && s < dayEnd;
+    });
+    todays.sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      return new Date(a.start) - new Date(b.start);
+    });
+    return todays.map(ev => ({
+      time: ev.allDay
+        ? 'all day'
+        : new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }).toLowerCase().replace(' ', ''),
+      title: ev.title || '',
+    }));
+  } catch (e) {
+    console.error('[reMarkable cron] events fetch failed:', e);
+    return []; // calendar failure shouldn't block the agenda
+  }
 }
 
 export async function GET(req) {
@@ -97,7 +134,7 @@ export async function GET(req) {
       completed: !!byLane[l.key]?.completed,
     }));
 
-    const events = await getTodayEvents(userId, tz);
+    const events = await getTodayEvents(supa, userId, tz, todayKey);
 
     const bytes = await buildAgendaPdf({ dateLabel, bigThree, tasks, events });
     const api = await remarkable(deviceToken);
