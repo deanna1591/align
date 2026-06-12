@@ -2,13 +2,16 @@
 
 // components/StickerLayer.jsx
 // STICKERS.EXE — a journaling layer of glossy Y2K stickers you can drag and
-// pin anywhere on screen. Positions persist (as % of viewport, so a sticker
-// in the corner stays in the corner on every device). All art is original.
+// pin anywhere ON THE PAGE. Anchoring: x is stored as % of page width, y as
+// pixels from the top of the document — so a sticker placed beside a section
+// stays beside it when you scroll, like a real scrapbook. (The y_pct column
+// holds pixels; the name is historical.) All art is original.
 //
 // Interactions: ✦ button (bottom-left) opens the tray → tap a sticker to add
 // it → drag to place. Tap a placed sticker to select: ✕ deletes, ↻ rotates.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase-client';
 
 const INK = '#36215C';
@@ -180,7 +183,9 @@ export default function StickerLayer() {
   const [items, setItems] = useState([]);
   const [trayOpen, setTrayOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [mounted, setMounted] = useState(false);
   const dragRef = useRef(null); // {id, startX, startY, origXPct, origYPct, moved}
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -211,7 +216,8 @@ export default function StickerLayer() {
     const draft = {
       user_id: userId, kind,
       x_pct: 44 + Math.random() * 12,
-      y_pct: 30 + Math.random() * 16,
+      // y is page pixels: drop it in the middle of whatever's on screen now
+      y_pct: Math.round(window.scrollY + window.innerHeight * 0.38 + Math.random() * 60),
       rotation: Math.round(Math.random() * 24 - 12),
       scale: 1,
     };
@@ -236,8 +242,9 @@ export default function StickerLayer() {
     const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
     if (Math.abs(dx) + Math.abs(dy) > 5) d.moved = true;
     if (!d.moved) return;
+    const maxY = Math.max(200, document.documentElement.scrollHeight - 30);
     const x = Math.min(98, Math.max(1, d.origXPct + (dx / window.innerWidth) * 100));
-    const y = Math.min(98, Math.max(1, d.origYPct + (dy / window.innerHeight) * 100));
+    const y = Math.min(maxY, Math.max(12, d.origYPct + dy)); // page pixels
     setItems(prev => prev.map(s => (s.id === d.id ? { ...s, x_pct: x, y_pct: y } : s)));
   };
   const onPointerUp = (e, st) => {
@@ -246,11 +253,7 @@ export default function StickerLayer() {
     if (!d || d.id !== st.id) return;
     if (d.moved) {
       const cur = items.find(s => s.id === st.id);
-      const moved = {
-        x_pct: Math.min(98, Math.max(1, d.origXPct + ((e.clientX - d.startX) / window.innerWidth) * 100)),
-        y_pct: Math.min(98, Math.max(1, d.origYPct + ((e.clientY - d.startY) / window.innerHeight) * 100)),
-      };
-      persist(st.id, cur ? { x_pct: cur.x_pct, y_pct: cur.y_pct } : moved);
+      if (cur) persist(st.id, { x_pct: cur.x_pct, y_pct: cur.y_pct });
     } else {
       setSelected(sel => (sel === st.id ? null : st.id));
     }
@@ -278,15 +281,16 @@ export default function StickerLayer() {
 
   return (
     <>
-      {/* placed stickers — float over everything except drawers/modals */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 35 }}>
+      {/* placed stickers — anchored to the page itself, scroll with content */}
+      {mounted && createPortal(
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 35 }}>
         {items.map(st => (
           <div key={st.id} data-sticker
             onPointerDown={(e) => onPointerDown(e, st)}
             onPointerMove={onPointerMove}
             onPointerUp={(e) => onPointerUp(e, st)}
             style={{
-              position: 'absolute', left: `${st.x_pct}%`, top: `${st.y_pct}%`,
+              position: 'absolute', left: `${st.x_pct}%`, top: `${st.y_pct}px`,
               transform: `translate(-50%, -50%) rotate(${st.rotation || 0}deg)`,
               pointerEvents: 'auto', touchAction: 'none', userSelect: 'none',
               cursor: 'grab',
@@ -302,7 +306,8 @@ export default function StickerLayer() {
             )}
           </div>
         ))}
-      </div>
+      </div>,
+      document.body)}
 
       {/* tray button — bottom left */}
       <button onClick={() => setTrayOpen(o => !o)} title="Stickers"

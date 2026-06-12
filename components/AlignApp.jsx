@@ -1156,9 +1156,8 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
         </div>
       </div>
 
-      {/* RIGHT — calendar + photobooth */}
-      <div className="w-full md:flex-1 min-w-0 flex flex-col gap-4 md:gap-5">
-      <div style={panel}>
+      {/* RIGHT — calendar */}
+      <div className="w-full md:flex-1" style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#DAC4FF', borderBottom: `2px solid ${palette.ink}` }}>
           <span style={{ display: 'inline-flex', gap: 5 }}><span style={dot('#9B5CFF')} /><span style={dot('#3FB8DE')} /></span>
           <span style={barName}>Calendar</span>
@@ -1194,8 +1193,6 @@ function TodayView({ date, tasks, events, lists, topThreeIds,
             </div>
           )}
         </div>
-      </div>
-      <PhotoBooth />
       </div>
     </div>
   );
@@ -1357,16 +1354,13 @@ export default function AlignApp() {
   const todayKey = dateKey(today0());
   const todayTasks = s.tasks[todayKey] || [];
 
-  // Roll yesterday's (and older) unfinished tasks into today's Leftover — once per day.
+  // Roll unfinished tasks from past days into today's Leftover. Runs on every
+  // load: rolloverIncomplete is a no-op (no DB write) when nothing qualifies,
+  // so there's no need for a once-per-day gate — and the old localStorage gate
+  // could stamp the day even when the sweep never actually ran.
   useEffect(() => {
     if (!s.loaded) return;
-    let last = null;
-    try { last = localStorage.getItem('align_last_rollover'); } catch {}
-    if (last === todayKey) return;
-    (async () => {
-      await s.rolloverIncomplete(todayKey);
-      try { localStorage.setItem('align_last_rollover', todayKey); } catch {}
-    })();
+    s.rolloverIncomplete(todayKey);
   }, [s.loaded, todayKey]);
 
   const suggestions = useMemo(() => {
@@ -1912,7 +1906,7 @@ export default function AlignApp() {
           </div>
         ) : (
           <div ref={weekGridRef}
-            className="grid grid-flow-col gap-x-4 gap-y-8 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 align-week-scroll"
+            className="grid grid-flow-col items-start gap-x-4 gap-y-8 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-4 align-week-scroll"
             style={{ gridAutoColumns: 'minmax(200px, 1fr)' }}>
             {days.map(d => (
               <DayColumn key={dateKey(d)} date={d} tasks={s.tasks[dateKey(d)] || []}
@@ -1937,9 +1931,11 @@ export default function AlignApp() {
         </div>
 
         {/* Left over: incomplete tasks from previous days */}
-        {leftoverCount > 0 && (
-          <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
-            <div className="mt-10 max-w-[640px]" style={{ background: '#FFFDF9', border: '2px solid #C9B8E6', borderRadius: 10, boxShadow: '2px 2px 0 rgba(91,62,142,0.10)', overflow: 'hidden' }}>
+        {/* Left over (left) + PHOTOBOOTH.EXE (right) — side by side on large screens */}
+        <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
+          <div className="mt-10 flex flex-col lg:flex-row gap-5 items-start">
+          {leftoverCount > 0 && (
+            <div className="w-full max-w-[640px] lg:flex-1" style={{ background: '#FFFDF9', border: '2px solid #C9B8E6', borderRadius: 10, boxShadow: '2px 2px 0 rgba(91,62,142,0.10)', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: '#ECE0F8', borderBottom: '2px solid #C9B8E6' }}>
                 <span style={{ display: 'inline-flex', gap: 5 }}>
                   <span style={{ width: 9, height: 9, borderRadius: 999, background: '#D8C7F0', border: '1.5px solid #C9B8E6' }} />
@@ -1991,8 +1987,12 @@ export default function AlignApp() {
                 })}
               </div>
             </div>
+          )}
+            <div className="w-full lg:flex-1 lg:max-w-[560px]" style={{ marginTop: leftoverCount > 0 ? 0 : undefined }}>
+              <PhotoBooth />
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Someday: tasks with no date — appears between the week grid and Lists */}
         <div className={mobileTab === 'lists' ? 'hidden md:block' : ''}>
