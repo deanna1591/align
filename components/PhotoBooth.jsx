@@ -95,17 +95,6 @@ export default function PhotoBooth({ hidden = false }) {
     setMinimized(m => { saveWin({ ...pos, min: !m }); return !m; });
   };
 
-  // When the dock hides the booth, make sure the camera is released.
-  useEffect(() => {
-    if (hidden) {
-      stopCamera();
-      setStage('idle');
-      setCount(null);
-      setShotNum(0);
-      setFlash(false);
-    }
-  }, [hidden, stopCamera]);
-
   // ---------- data ----------
   useEffect(() => {
     const supabase = createClient();
@@ -138,6 +127,17 @@ export default function PhotoBooth({ hidden = false }) {
     streamRef.current = null;
   }, []);
   useEffect(() => () => { cancelRef.current = true; stopCamera(); }, [stopCamera]);
+
+  // When the dock hides the booth, make sure the camera is released.
+  useEffect(() => {
+    if (hidden) {
+      stopCamera();
+      setStage('idle');
+      setCount(null);
+      setShotNum(0);
+      setFlash(false);
+    }
+  }, [hidden, stopCamera]);
 
   const openBooth = async () => {
     setErr('');
