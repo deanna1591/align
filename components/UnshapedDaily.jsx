@@ -63,6 +63,7 @@ export default function UnshapedDaily({ userId }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [breath, setBreath] = useState(null); // null = off, 'in' | 'out' while breathing
+  const [pickedDay, setPickedDay] = useState(null); // randomizer override; null = sequential
 
   // Breathing gate: one slow cycle before the form appears.
   useEffect(() => {
@@ -96,26 +97,37 @@ export default function UnshapedDaily({ userId }) {
     for (let d = 1; d <= 200; d++) if (!doneDays.has(d)) return d;
     return null; // all 200 complete!
   }, [doneDays]);
-  const entry = currentDay ? UNSHAPED[currentDay - 1] : null;
+  // The day actually shown: a randomly-picked incomplete day if chosen, else the next in sequence.
+  const shownDay = (pickedDay && !doneDays.has(pickedDay)) ? pickedDay : currentDay;
+  const entry = shownDay ? UNSHAPED[shownDay - 1] : null;
+
+  // Surprise me — jump to a random not-yet-done day (never the one already shown).
+  const surprise = useCallback(() => {
+    const remaining = [];
+    for (let d = 1; d <= 200; d++) if (!doneDays.has(d) && d !== shownDay) remaining.push(d);
+    if (remaining.length === 0) return; // nothing else to pick
+    setPickedDay(remaining[Math.floor(Math.random() * remaining.length)]);
+    setMore(false);
+  }, [doneDays, shownDay]);
   const streak = useMemo(() => streakFrom(rows || []), [rows]);
   const waitingDays = useMemo(() => {
     if (!rows) return 0;
-    const r = rows.find(x => x.day === currentDay);
+    const r = rows.find(x => x.day === shownDay);
     if (!r?.assigned_date) return 0;
     const diff = Math.floor((new Date(todayYmd()) - new Date(r.assigned_date)) / 86400000);
     return Math.max(0, diff);
-  }, [rows, currentDay]);
+  }, [rows, shownDay]);
 
-  // Record when today's entry was first offered (for the gentle "still waiting" nudge).
+  // Record when an entry was first offered (for the gentle "still waiting" nudge).
   useEffect(() => {
-    if (!userId || !rows || !currentDay) return;
-    const existing = rows.find(r => r.day === currentDay);
+    if (!userId || !rows || !shownDay) return;
+    const existing = rows.find(r => r.day === shownDay);
     if (existing) return;
     const supabase = createClient();
     supabase.from('unshaped_progress')
-      .upsert({ user_id: userId, day: currentDay, status: 'pending', assigned_date: todayYmd() }, { onConflict: 'user_id,day' })
+      .upsert({ user_id: userId, day: shownDay, status: 'pending', assigned_date: todayYmd() }, { onConflict: 'user_id,day' })
       .then(() => {});
-  }, [userId, rows, currentDay]);
+  }, [userId, rows, shownDay]);
 
   const save = async () => {
     if (saving) return;
@@ -126,13 +138,13 @@ export default function UnshapedDaily({ userId }) {
     setSaving(true); setErr('');
     const supabase = createClient();
     const { error } = await supabase.from('unshaped_progress').upsert({
-      user_id: userId, day: currentDay, status: 'done',
+      user_id: userId, day: shownDay, status: 'done',
       noticed: noticed.trim(), felt: felt.trim(), anything: anything.trim(),
       completed_at: new Date().toISOString(),
     }, { onConflict: 'user_id,day' });
     setSaving(false);
     if (error) { setErr(error.message); return; }
-    setOpen(false); setMore(false);
+    setOpen(false); setMore(false); setPickedDay(null);
     setNoticed(''); setFelt(''); setAnything('');
     refresh(); // tracker auto-fills from the new row
   };
@@ -177,7 +189,9 @@ export default function UnshapedDaily({ userId }) {
           </div>
           <div style={{ padding: '12px 15px' }}>
             <div style={vt('0.98rem', C.accent)}>
-              Hey {NAME} — try this today ✦ day {entry.day}
+              {pickedDay && !doneDays.has(pickedDay)
+                ? <>Hey {NAME} — surprise pick ✦ day {entry.day}</>
+                : <>Hey {NAME} — try this today ✦ day {entry.day}</>}
               {waitingDays > 0 && <span style={{ color: C.ink3 }}> · still waiting ({waitingDays + 1}d)</span>}
             </div>
             <div style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.95rem', fontWeight: 600, color: C.ink, margin: '5px 0 10px', lineHeight: 1.35 }}>
@@ -192,6 +206,12 @@ export default function UnshapedDaily({ userId }) {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button onClick={() => { setOpen(true); setErr(''); }} style={btn(C.accent, '#fff')}>I did it — reflect</button>
               <button onClick={() => setMore(m => !m)} style={btn('#fff', C.ink)}>{more ? 'less' : 'tell me more'}</button>
+              <button onClick={surprise} title="Jump to a random thing" style={btn(C.warm, '#fff')}>🎲 surprise me</button>
+              {pickedDay && !doneDays.has(pickedDay) && (
+                <button onClick={() => setPickedDay(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: C.ink3, textDecoration: 'underline' }}>
+                  back to day {currentDay}
+                </button>
+              )}
               <button onClick={snooze} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: C.ink3, textDecoration: 'underline', marginLeft: 'auto' }}>
                 not today
               </button>
@@ -271,7 +291,7 @@ export default function UnshapedDaily({ userId }) {
                 {Array.from({ length: 200 }, (_, i) => {
                   const dnum = i + 1;
                   const done = doneDays.has(dnum);
-                  const isCurrent = dnum === currentDay;
+                  const isCurrent = dnum === shownDay;
                   return (
                     <div key={dnum} title={`Day ${dnum}${done ? ' ✓' : isCurrent ? ' — today' : ''}`}
                       style={{
