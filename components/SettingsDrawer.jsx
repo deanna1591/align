@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, Plus, Trash2, Check, ExternalLink, RefreshCw, AlertCircle, Type, Volume2, VolumeX } from 'lucide-react';
+import { X, Calendar, Plus, Trash2, Check, ExternalLink, RefreshCw, AlertCircle, Type, Volume2, VolumeX, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase-client';
 import { isMuted, setMuted, sfx } from '@/lib/sfx';
 import { WALLPAPERS, getWallpaper, setWallpaper } from '@/lib/wallpapers';
@@ -24,7 +24,38 @@ const palette = {
   warnSoft: 'rgba(155,92,255,0.14)',
 };
 
-export default function SettingsDrawer({ open, onClose, user, textScale = 'default', onTextScaleChange }) {
+export default function SettingsDrawer({ open, onClose, user, onSignOut, textScale = 'default', onTextScaleChange }) {
+  // --- account deletion (Apple 5.1.1(v) requirement) ---
+  const [delConfirm, setDelConfirm] = useState(false);
+  const [delText, setDelText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [delError, setDelError] = useState('');
+  const deleteAccount = async () => {
+    setDeleting(true); setDelError('');
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { setDelError('Please sign in again, then retry.'); setDeleting(false); return; }
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setDelError(j.detail || j.error || 'Could not delete account. Please try again.');
+        setDeleting(false);
+        return;
+      }
+      // success — sign out locally and bounce to login
+      await supabase.auth.signOut().catch(() => {});
+      window.location.href = '/login';
+    } catch (e) {
+      setDelError('Could not delete account. Please try again.');
+      setDeleting(false);
+    }
+  };
+
   // --- sound effects ---
   const [muted, setMutedState] = useState(false);
   useEffect(() => { setMutedState(isMuted()); }, [open]);
@@ -811,6 +842,84 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
                   </p>
                 </div>
               </>
+            )}
+          </section>
+
+          {/* ACCOUNT — sign out + delete account (Apple 5.1.1(v)) */}
+          <section className="mb-4" style={{ borderTop: `1px solid ${palette.border}`, paddingTop: 20 }}>
+            <div className="flex items-center gap-2 mb-3">
+              <LogOut size={14} style={{ color: palette.accent }} />
+              <h3 style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2 }}>
+                Account
+              </h3>
+            </div>
+            {user?.email && (
+              <p style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', color: palette.ink3, marginBottom: 12 }}>
+                Signed in as {user.email}
+              </p>
+            )}
+
+            <button
+              onClick={() => { if (onSignOut) onSignOut(); }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded mb-3 transition-colors"
+              style={{ background: palette.bg, border: `1px solid ${palette.border}`, color: palette.ink2, cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', fontWeight: 500 }}
+            >
+              <LogOut size={14} /> Sign out
+            </button>
+
+            {!delConfirm ? (
+              <button
+                onClick={() => { setDelConfirm(true); setDelError(''); setDelText(''); }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded transition-colors"
+                style={{ background: 'transparent', border: `1px solid #E0A0A0`, color: '#C0392B', cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', fontWeight: 500 }}
+              >
+                <Trash2 size={14} /> Delete account
+              </button>
+            ) : (
+              <div style={{ border: `1.5px solid #E0A0A0`, borderRadius: 8, padding: 14, background: '#FDF3F3' }}>
+                <div className="flex items-start gap-2" style={{ marginBottom: 10 }}>
+                  <AlertCircle size={16} style={{ color: '#C0392B', flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.8rem', color: palette.ink, lineHeight: 1.45 }}>
+                    This permanently deletes your account and all your data — tasks, brain dumps, stats, stickers, and settings. This <strong>cannot be undone</strong>.
+                  </p>
+                </div>
+                <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.75rem', color: palette.ink2, marginBottom: 6 }}>
+                  Type <strong>DELETE</strong> to confirm:
+                </p>
+                <input
+                  value={delText}
+                  onChange={(e) => setDelText(e.target.value)}
+                  placeholder="DELETE"
+                  autoCapitalize="characters"
+                  style={{ width: '100%', padding: '0.55rem 0.7rem', fontFamily: 'Inter Tight, sans-serif', fontSize: '16px', color: palette.ink, background: '#fff', border: `1px solid ${palette.border}`, borderRadius: 6, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+                />
+                {delError && (
+                  <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.78rem', color: '#C0392B', marginBottom: 10 }}>{delError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={deleteAccount}
+                    disabled={delText.trim().toUpperCase() !== 'DELETE' || deleting}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded transition-colors"
+                    style={{
+                      background: (delText.trim().toUpperCase() === 'DELETE' && !deleting) ? '#C0392B' : palette.border,
+                      color: (delText.trim().toUpperCase() === 'DELETE' && !deleting) ? '#fff' : palette.ink3,
+                      border: 'none', cursor: (delText.trim().toUpperCase() === 'DELETE' && !deleting) ? 'pointer' : 'not-allowed',
+                      fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', fontWeight: 600,
+                    }}
+                  >
+                    <Trash2 size={14} /> {deleting ? 'Deleting…' : 'Permanently delete'}
+                  </button>
+                  <button
+                    onClick={() => { setDelConfirm(false); setDelText(''); setDelError(''); }}
+                    disabled={deleting}
+                    className="py-2.5 px-4 rounded transition-colors"
+                    style={{ background: '#fff', border: `1px solid ${palette.border}`, color: palette.ink2, cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif', fontSize: '0.85rem', fontWeight: 500 }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </section>
         </div>

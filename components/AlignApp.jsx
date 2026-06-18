@@ -2179,7 +2179,7 @@ export default function AlignApp() {
         onComplete={(id) => focusTask && s.toggleTask(focusTask.dKey, id)}
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} onSignOut={s.signOut} textScale={textScale} onTextScaleChange={setTextScale} />
       <StickerLayer dock={floats ? { ipod: floats.ipod, booth: floats.booth, pet: floats.pet, onToggle: toggleFloat } : null} streak={s.stats?.streak || 0} />
       {floats && <PhotoBooth hidden={!floats.booth} />}
       {floats && <IPod hidden={!floats.ipod} />}
