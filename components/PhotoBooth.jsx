@@ -34,13 +34,57 @@ function tiltFor(id) {
 }
 const PIN_COLORS = ['#FF5FB0', '#FCD93D', '#9B5CFF', '#3FB8DE'];
 
+// ---------- Y2K FILTERS ----------
+// Each filter defines: a CSS filter string for the live <video> preview, a
+// canvas filter string for the composed strip, an optional color wash drawn
+// over each frame, and an optional sticker decoration painted on the strip.
+const FILTERS = [
+  {
+    id: 'classic', label: 'classic', emoji: '\u2726',
+    css: 'sepia(0.16) contrast(1.07) saturate(1.16) brightness(1.02)',
+    canvas: 'sepia(0.16) contrast(1.07) saturate(1.16) brightness(1.02)',
+    wash: null, frame: '#FFB3DE', stickers: null,
+  },
+  {
+    id: 'mono', label: 'noir', emoji: '\u25D1',
+    css: 'grayscale(1) contrast(1.12) brightness(1.04)',
+    canvas: 'grayscale(1) contrast(1.12) brightness(1.04)',
+    wash: null, frame: '#D8C9F0', stickers: null,
+  },
+  {
+    id: 'vhs', label: 'vhs cam', emoji: '\u25A4',
+    css: 'saturate(1.5) contrast(1.15) hue-rotate(-8deg) brightness(1.05)',
+    canvas: 'saturate(1.5) contrast(1.15) hue-rotate(-8deg) brightness(1.05)',
+    wash: 'rgba(0,255,180,0.07)', frame: '#7DF9C6', stickers: 'vhs',
+  },
+  {
+    id: 'bubblegum', label: 'bubblegum', emoji: '\u2661',
+    css: 'saturate(1.35) brightness(1.08) contrast(0.98) hue-rotate(310deg)',
+    canvas: 'saturate(1.35) brightness(1.08) contrast(0.98) hue-rotate(310deg)',
+    wash: 'rgba(255,95,176,0.12)', frame: '#FF8FCB', stickers: 'hearts',
+  },
+  {
+    id: 'glam', label: 'glam', emoji: '\u2727',
+    css: 'saturate(1.2) brightness(1.12) contrast(1.05) blur(0.3px)',
+    canvas: 'saturate(1.2) brightness(1.12) contrast(1.05)',
+    wash: 'rgba(252,217,61,0.10)', frame: '#FCD93D', stickers: 'sparkle',
+  },
+  {
+    id: 'frost', label: 'frostbyte', emoji: '\u2744',
+    css: 'saturate(0.9) brightness(1.06) contrast(1.04) hue-rotate(180deg)',
+    canvas: 'saturate(0.9) brightness(1.06) contrast(1.04) hue-rotate(180deg)',
+    wash: 'rgba(63,184,222,0.12)', frame: '#7FD4EC', stickers: 'frost',
+  },
+];
+const FILTER_BY_ID = Object.fromEntries(FILTERS.map(f => [f.id, f]));
+
 export default function PhotoBooth({ hidden = false }) {
   const [userId, setUserId] = useState(null);
   const [stage, setStage] = useState('idle'); // idle | live | shooting | printing
   const [count, setCount] = useState(null);   // 3,2,1 overlay
   const [shotNum, setShotNum] = useState(0);  // 1..3 while shooting
   const [flash, setFlash] = useState(false);
-  const [mono, setMono] = useState(false);
+  const [filterId, setFilterId] = useState('classic');
   const [strips, setStrips] = useState([]);   // {id, path, taken_at, url}
   const [freshId, setFreshId] = useState(null); // strip that gets the print animation
   const [lightbox, setLightbox] = useState(null); // strip object
@@ -193,7 +237,63 @@ export default function PhotoBooth({ hidden = false }) {
     ctx.drawImage(src, sx, sy, sw, sh, dx, dy, dw, dh);
   };
 
+  // draw little vector stickers onto a strip frame depending on the filter
+  const drawStickers = (ctx, kind, x, y, w, h) => {
+    ctx.save();
+    if (kind === 'hearts') {
+      const heart = (cx, cy, s, col) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + s * 0.3);
+        ctx.bezierCurveTo(cx, cy, cx - s, cy - s * 0.3, cx - s, cy + s * 0.15);
+        ctx.bezierCurveTo(cx - s, cy + s * 0.6, cx, cy + s * 0.85, cx, cy + s);
+        ctx.bezierCurveTo(cx, cy + s * 0.85, cx + s, cy + s * 0.6, cx + s, cy + s * 0.15);
+        ctx.bezierCurveTo(cx + s, cy - s * 0.3, cx, cy, cx, cy + s * 0.3);
+        ctx.fill();
+      };
+      heart(x + w - 26, y + 24, 11, '#FF5FB0');
+      heart(x + 24, y + h - 28, 8, '#FFFFFF');
+    } else if (kind === 'sparkle') {
+      const spark = (cx, cy, s, col) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = (Math.PI / 4) * i;
+          const r = i % 2 === 0 ? s : s * 0.35;
+          ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        }
+        ctx.closePath(); ctx.fill();
+      };
+      spark(x + w - 28, y + 26, 13, '#FCD93D');
+      spark(x + 26, y + h - 30, 9, '#FFFFFF');
+      spark(x + w - 50, y + h - 24, 6, '#FCD93D');
+    } else if (kind === 'frost') {
+      ctx.strokeStyle = '#CFF0FF'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      const flake = (cx, cy, s) => {
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a) * s, cy + Math.sin(a) * s);
+          ctx.stroke();
+        }
+      };
+      flake(x + w - 26, y + 26, 11);
+      flake(x + 24, y + h - 28, 8);
+    } else if (kind === 'vhs') {
+      // timestamp-style tag in the corner
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(x + 8, y + h - 26, 92, 18);
+      ctx.fillStyle = '#7DF9C6';
+      ctx.font = '15px VT323, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('REC \u25CF 0:0' + (Math.floor(Math.random() * 9)), x + 13, y + h - 12);
+    }
+    ctx.restore();
+  };
+
   const composeStrip = (frames) => {
+    const fil = FILTER_BY_ID[filterId] || FILTERS[0];
     const W = 360, FW = 320, FH = 240, M = 20, GAP = 18, FOOT = 64;
     const H = M + 3 * FH + 2 * GAP + FOOT;
     const c = document.createElement('canvas');
@@ -201,18 +301,30 @@ export default function PhotoBooth({ hidden = false }) {
     const ctx = c.getContext('2d');
     // paper
     ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
-    // frames with a vintage wash
+    // frames with the chosen filter
     frames.forEach((f, i) => {
       const y = M + i * (FH + GAP);
       ctx.save();
-      ctx.filter = mono
-        ? 'grayscale(1) contrast(1.12) brightness(1.04)'
-        : 'sepia(0.16) contrast(1.07) saturate(1.16) brightness(1.02)';
+      ctx.filter = fil.canvas;
       drawCover(ctx, f, M, y, FW, FH);
       ctx.restore();
-      // thin pink frame line
-      ctx.strokeStyle = '#FFB3DE'; ctx.lineWidth = 3;
+      // color wash for the vibe
+      if (fil.wash) {
+        ctx.save();
+        ctx.fillStyle = fil.wash;
+        ctx.fillRect(M, y, FW, FH);
+        ctx.restore();
+      }
+      // vignette for that old-camera feel
+      const g = ctx.createRadialGradient(M + FW / 2, y + FH / 2, FH * 0.3, M + FW / 2, y + FH / 2, FH * 0.75);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(20,8,40,0.22)');
+      ctx.fillStyle = g; ctx.fillRect(M, y, FW, FH);
+      // frame line in the filter's accent color
+      ctx.strokeStyle = fil.frame; ctx.lineWidth = 3;
       ctx.strokeRect(M + 1.5, y + 1.5, FW - 3, FH - 3);
+      // stickers
+      if (fil.stickers) drawStickers(ctx, fil.stickers, M, y, FW, FH);
     });
     // film grain, lightly
     ctx.globalAlpha = 0.05;
@@ -334,7 +446,7 @@ export default function PhotoBooth({ hidden = false }) {
           <div style={{ marginBottom: 12 }}>
             <div style={{ position: 'relative', border: `2px solid ${C.ink}`, borderRadius: 8, overflow: 'hidden', background: '#14102A', aspectRatio: '4 / 3' }}>
               <video ref={videoRef} muted playsInline autoPlay
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', filter: mono ? 'grayscale(1) contrast(1.1)' : 'none', display: stage === 'printing' ? 'none' : 'block' }} />
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', filter: (FILTER_BY_ID[filterId] || FILTERS[0]).css, display: stage === 'printing' ? 'none' : 'block' }} />
               {/* scanlines */}
               {stage !== 'printing' && (
                 <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px)' }} />
@@ -356,11 +468,30 @@ export default function PhotoBooth({ hidden = false }) {
                 </div>
               )}
             </div>
+            {stage === 'live' && (
+              <div data-nodrag style={{ display: 'flex', gap: 6, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
+                {FILTERS.map((f) => {
+                  const active = f.id === filterId;
+                  return (
+                    <button key={f.id} onClick={() => setFilterId(f.id)}
+                      style={{
+                        flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 4,
+                        border: `2px solid ${C.ink}`, borderRadius: 999,
+                        background: active ? C.accent : '#fff', color: active ? '#fff' : C.ink,
+                        boxShadow: active ? C.shadow : 'none',
+                        fontFamily: 'VT323, monospace', fontSize: '0.92rem', textTransform: 'uppercase',
+                        letterSpacing: '0.04em', padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}>
+                      <span>{f.emoji}</span>{f.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               {stage === 'live' && (
                 <>
                   <button onClick={shoot} style={btn(C.accent, '#fff', { flex: 1 })}>★ start — 3 shots</button>
-                  <button onClick={() => setMono(m => !m)} style={btn(mono ? C.ink : '#fff', mono ? '#fff' : C.ink)}>✦ mono</button>
                   <button onClick={closeBooth} style={btn('#fff', C.ink3, { borderColor: C.border, boxShadow: 'none' })}>close</button>
                 </>
               )}
