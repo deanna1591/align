@@ -60,7 +60,7 @@ export default function LoginPage() {
       backgroundColor: C.bg,
       backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
       backgroundSize: '22px 22px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 1rem 1rem',
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter+Tight:wght@400;500;600;700&display=swap');

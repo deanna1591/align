@@ -69,19 +69,24 @@ function mondayOf(date) {
   return d;
 }
 
-const LANES = [
+// Accounts allowed to see owner-only "RemoteGenies" buckets. Add more emails here if needed.
+const OWNER_EMAILS = ['deannasallao@gmail.com'];
+const isOwner = (email) => !!email && OWNER_EMAILS.includes(String(email).toLowerCase());
+
+const BASE_LANES = [
   { key: 'personal', label: 'Personal' },
-  { key: 'work', label: 'RemoteGenies' },
   { key: 'team', label: 'Leadership / Team' },
 ];
-const CATEGORIES = [
+const OWNER_LANE = { key: 'work', label: 'RemoteGenies' };
+
+const BASE_CATEGORIES = [
   { key: 'business', label: 'Business' },
-  { key: 'remotegenies', label: 'RemoteGenies' },
   { key: 'travel', label: 'Travel' },
   { key: 'family', label: 'Family' },
   { key: 'insight', label: 'Insight' },
   { key: 'idea', label: 'Idea' },
 ];
+const OWNER_CATEGORY = { key: 'remotegenies', label: 'RemoteGenies' };
 const DELEGATE_DECISIONS = [
   { key: 'delegate', label: 'Delegate' },
   { key: 'automate', label: 'Automate' },
@@ -173,7 +178,7 @@ function Win({ theme, icon, title, subtitle, children, defaultOpen = true }) {
 }
 
 // =============================================================================
-export default function OperatingSystem({ userId }) {
+export default function OperatingSystem({ userId, userEmail }) {
   const supabase = useRef(null);
   const [loaded, setLoaded] = useState(false);
   const [bigThree, setBigThree] = useState([]);
@@ -181,6 +186,11 @@ export default function OperatingSystem({ userId }) {
   const [delegates, setDelegates] = useState([]);
   const [decisions, setDecisions] = useState([]);
   const [review, setReview] = useState(null);
+
+  // Owner-only "RemoteGenies" buckets are visible only to the owner account.
+  const owner = isOwner(userEmail);
+  const LANES = owner ? [BASE_LANES[0], OWNER_LANE, BASE_LANES[1]] : BASE_LANES;
+  const CATEGORIES = owner ? [BASE_CATEGORIES[0], OWNER_CATEGORY, ...BASE_CATEGORIES.slice(1)] : BASE_CATEGORIES;
 
   const todayKey = ymd(new Date());
   const weekStartKey = ymd(mondayOf(new Date()));
@@ -432,7 +442,7 @@ function BigWinRow({ theme, lane, win, onSet, onToggle, onRemove }) {
             {win.completed && <Check size={14} color="#fff" strokeWidth={3} />}
             {pop && <SpyBurst key={Date.now()} />}
           </button>
-          <span onClick={() => setEditing(true)} style={{ flex: 1, fontFamily: TERM, fontSize: '1.2rem', color: win.completed ? C.ink2 : C.ink, cursor: 'text', textDecoration: win.completed ? 'line-through' : 'none', lineHeight: 1.1 }}>{win.text}</span>
+          <span onClick={() => setEditing(true)} style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', fontFamily: TERM, fontSize: '1.2rem', color: win.completed ? C.ink2 : C.ink, cursor: 'text', textDecoration: win.completed ? 'line-through' : 'none', lineHeight: 1.1 }}>{win.text}</span>
           <button onClick={() => onRemove(win.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink2, flexShrink: 0 }}><X size={16} /></button>
         </>
       ) : (
@@ -464,7 +474,7 @@ function OpportunitySection({ theme, opps, categories, onAdd, onArchive, onDelet
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {group.items.map(o => (
                   <div key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 11px', borderRadius: 5, background: theme.soft, border: `2px solid ${C.edge}` }}>
-                    <span style={{ flex: 1, fontFamily: TERM, fontSize: '1.15rem', color: C.ink, lineHeight: 1.15 }}>{o.text}</span>
+                    <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', fontFamily: TERM, fontSize: '1.15rem', color: C.ink, lineHeight: 1.15 }}>{o.text}</span>
                     <button onClick={() => onArchive(o.id)} title="Archive" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink2, flexShrink: 0 }}><Archive size={15} /></button>
                     <button onClick={() => onDelete(o.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink2, flexShrink: 0 }}><Trash2 size={15} /></button>
                   </div>
@@ -491,7 +501,7 @@ function DelegateSection({ theme, delegates, decisions, onAdd, onDecide, onCompl
           {delegates.map(d => (
             <div key={d.id} style={{ padding: '10px 12px', borderRadius: 5, border: `2px solid ${C.edge}`, background: '#fff', boxShadow: `2px 2px 0 ${C.shadow}` }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 9 }}>
-                <span style={{ flex: 1, fontFamily: TERM, fontSize: '1.18rem', color: C.ink, lineHeight: 1.15 }}>{d.text}</span>
+                <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', fontFamily: TERM, fontSize: '1.18rem', color: C.ink, lineHeight: 1.15 }}>{d.text}</span>
                 <button onClick={() => onComplete(d.id)} title="Mark handled" style={{ width: 22, height: 22, borderRadius: 4, flexShrink: 0, cursor: 'pointer', border: `2px solid ${C.edge}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.accent }}><Check size={14} /></button>
                 <button onClick={() => onDelete(d.id)} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink2, flexShrink: 0 }}><Trash2 size={15} /></button>
               </div>
@@ -542,7 +552,7 @@ function DecisionCard({ theme, d, onReview, onDelete }) {
   return (
     <div style={{ padding: '11px 13px', borderRadius: 5, border: `2px solid ${C.edge}`, background: '#fff', boxShadow: `2px 2px 0 ${C.shadow}` }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span style={{ flex: 1, fontFamily: TERM, fontSize: '1.3rem', color: C.ink, lineHeight: 1.1 }}>{d.title}</span>
+        <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', fontFamily: TERM, fontSize: '1.3rem', color: C.ink, lineHeight: 1.1 }}>{d.title}</span>
         <span style={{ fontFamily: TERM, fontSize: '0.95rem', color: C.ink2, flexShrink: 0, whiteSpace: 'nowrap' }}>{new Date(d.decided_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         <button onClick={() => onDelete(d.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink2, flexShrink: 0 }}><Trash2 size={15} /></button>
       </div>

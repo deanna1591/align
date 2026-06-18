@@ -103,14 +103,20 @@ export default function PhotoBooth({ hidden = false }) {
 
   useEffect(() => {
     setMounted(true);
+    // On narrow screens, the saved/desktop default (xp 72) pushes the window off
+    // the right edge. Cap how far right it can sit based on viewport width.
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const maxXp = vw < 640 ? 4 : 96; // phones: pin near the left so it stays fully visible
     try {
       const saved = JSON.parse(localStorage.getItem('align_booth_win') || 'null');
       if (saved && typeof saved.xp === 'number') {
         setPos({
-          xp: Math.min(96, Math.max(0, saved.xp)),
+          xp: Math.min(maxXp, Math.max(0, saved.xp)),
           y: Math.max(60, saved.y || 340),
         });
         setMinimized(!!saved.min);
+      } else if (vw < 640) {
+        setPos({ xp: 4, y: 340 });
       }
     } catch {}
   }, []);
