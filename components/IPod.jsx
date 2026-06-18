@@ -1,12 +1,15 @@
 'use client';
 
 // components/IPod.jsx
-// POD.EXE — a draggable, pinnable click-wheel music player for the planner.
+// TAPE.EXE — a draggable, pinnable cassette-tape music player for the planner.
 // Paste a Spotify playlist link into its screen once; it's remembered. Plays
 // via Spotify's official embed (full tracks when you're logged into Spotify
-// in this browser, previews otherwise). Wheel: center/⏯ = play-pause,
-// ⏮ = restart / back 15s, ⏭ = forward 15s, MENU = playlist ⇄ mini view.
+// in this browser, previews otherwise). Transport bar: REW = restart / back
+// 15s, PLAY = play-pause, FF = forward 15s, LIST = playlist <-> mini view.
 // Drag the body anywhere; position persists per device (like the photobooth).
+//
+// NOTE: Designed as a retro cassette deck — deliberately NOT resembling any
+// hardware music player product. All controls are labeled rectangular buttons.
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -61,7 +64,6 @@ export default function IPod({ hidden = false }) {
 
     const init = (IFrameAPI) => {
       if (cancelled || !screenRef.current) return;
-      // clear previous
       controllerRef.current?.destroy?.();
       screenRef.current.innerHTML = '<div></div>';
       IFrameAPI.createController(
@@ -90,7 +92,7 @@ export default function IPod({ hidden = false }) {
     return () => { cancelled = true; };
   }, [uri, minimized, menuView]);
 
-  // ---------- wheel actions ----------
+  // ---------- transport actions ----------
   const togglePlay = () => controllerRef.current?.togglePlay?.();
   const back = () => controllerRef.current?.seek?.(posSec > 5 ? Math.max(0, posSec - 15) : 0);
   const fwd = () => controllerRef.current?.seek?.(posSec + 15);
@@ -132,10 +134,22 @@ export default function IPod({ hidden = false }) {
 
   if (!mounted) return null;
 
-  const wheelBtn = {
-    position: 'absolute', background: 'none', border: 'none', cursor: 'pointer',
-    color: '#9AA1AD', fontFamily: 'Inter Tight, sans-serif', fontWeight: 700,
-    fontSize: 11, letterSpacing: '0.08em', padding: 6, userSelect: 'none',
+  // labeled rectangular transport button — clearly software UI, not a wheel
+  const tBtn = {
+    flex: 1,
+    background: 'linear-gradient(180deg, #FFFFFF 0%, #ECEDF2 100%)',
+    border: `2px solid ${INK}`,
+    borderRadius: 7,
+    cursor: 'pointer',
+    color: INK,
+    fontFamily: 'VT323, monospace',
+    fontSize: 12,
+    letterSpacing: '0.06em',
+    lineHeight: '22px',
+    padding: '4px 0',
+    userSelect: 'none',
+    textTransform: 'uppercase',
+    boxShadow: '2px 2px 0 rgba(54,33,92,0.18)',
   };
 
   return createPortal(
@@ -144,16 +158,16 @@ export default function IPod({ hidden = false }) {
       style={{
         position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 33,
         display: hidden ? 'none' : undefined,
-        width: minimized ? 120 : 'min(252px, calc(100vw - 24px))',
+        width: minimized ? 120 : 'min(260px, calc(100vw - 24px))',
         background: 'linear-gradient(160deg, #FFFFFF 0%, #F2F3F6 70%, #E8EAEF 100%)',
-        border: `2px solid ${INK}`, borderRadius: 18, boxShadow: SHADOW,
-        padding: minimized ? '6px 10px' : '12px 12px 16px',
+        border: `2px solid ${INK}`, borderRadius: 14, boxShadow: SHADOW,
+        padding: minimized ? '6px 10px' : '12px 12px 14px',
         cursor: 'grab', touchAction: 'none', userSelect: 'none',
       }}>
       {/* top row: name + minimize */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: minimized ? 0 : 8 }}>
         <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '0.95rem', letterSpacing: '0.08em', color: '#A6ACB8', textTransform: 'uppercase' }}>
-          {minimized ? (playing ? '♪ pod.exe' : 'pod.exe') : 'pod.exe'}
+          {minimized ? (playing ? '♪ tape.exe' : 'tape.exe') : 'tape.exe'}
         </span>
         {minimized && playing && <span style={{ fontSize: 10, color: '#7BC47F', marginRight: 6 }}>▶</span>}
         <button data-nodrag onClick={toggleMin} title={minimized ? 'Expand' : 'Minimize'}
@@ -186,14 +200,45 @@ export default function IPod({ hidden = false }) {
             )}
           </div>
 
-          {/* CLICK WHEEL */}
-          <div style={{ position: 'relative', width: 168, height: 168, margin: '16px auto 0', borderRadius: 999, background: 'linear-gradient(160deg, #FAFBFC, #E9EBF0)', border: '1.5px solid #D4D8E0', boxShadow: 'inset 0 1px 3px rgba(54,33,92,0.08)' }}>
-            <button data-nodrag onClick={menu} style={{ ...wheelBtn, top: 8, left: '50%', transform: 'translateX(-50%)' }} title="Toggle playlist / mini view">MENU</button>
-            <button data-nodrag onClick={back} style={{ ...wheelBtn, left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13 }} title="Restart / back 15s">⏮</button>
-            <button data-nodrag onClick={fwd} style={{ ...wheelBtn, right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13 }} title="Forward 15s">⏭</button>
-            <button data-nodrag onClick={togglePlay} style={{ ...wheelBtn, bottom: 8, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }} title="Play / pause">{'▶❚❚'}</button>
-            <button data-nodrag onClick={togglePlay} title="Play / pause"
-              style={{ position: 'absolute', inset: 0, margin: 'auto', width: 62, height: 62, borderRadius: 999, border: '1.5px solid #D4D8E0', background: 'linear-gradient(160deg, #FFFFFF, #EEF0F4)', cursor: 'pointer', boxShadow: '0 1px 2px rgba(54,33,92,0.10)' }} />
+          {/* CASSETTE WINDOW — two spinning reels behind a clear window */}
+          <div style={{
+            marginTop: 14, border: `2px solid ${INK}`, borderRadius: 10,
+            background: 'linear-gradient(160deg, #FBE3F1 0%, #F3D2E7 100%)',
+            padding: '12px 14px', position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              textAlign: 'center', fontFamily: 'VT323, monospace', fontSize: 13,
+              letterSpacing: '0.14em', color: INK, textTransform: 'uppercase',
+              marginBottom: 10, opacity: 0.8,
+            }}>
+              {'\u2726 mixtape \u2726'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 34 }}>
+              {[0, 1].map((i) => (
+                <div key={i} style={{
+                  position: 'relative',
+                  width: 46, height: 46, borderRadius: 999,
+                  border: `2px solid ${INK}`, background: '#FFFFFF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: playing ? 'tapeSpin 2.6s linear infinite' : 'none',
+                }}>
+                  <div style={{ position: 'absolute', width: 2, height: 18, background: INK, opacity: 0.35 }} />
+                  <div style={{ position: 'absolute', width: 2, height: 18, background: INK, opacity: 0.35, transform: 'rotate(60deg)' }} />
+                  <div style={{ position: 'absolute', width: 2, height: 18, background: INK, opacity: 0.35, transform: 'rotate(120deg)' }} />
+                  <div style={{ width: 16, height: 16, borderRadius: 999, border: `2px solid ${INK}`, background: '#FBE3F1', zIndex: 1 }} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* TRANSPORT BAR — labeled rectangular buttons, no wheel */}
+          <div data-nodrag style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            <button data-nodrag onClick={back} style={tBtn} title="Restart / back 15s">{'\u23EE rew'}</button>
+            <button data-nodrag onClick={togglePlay} style={{ ...tBtn, flex: 1.5, background: 'linear-gradient(180deg, #FF8FCB 0%, #FF5FB0 100%)', color: '#FFFFFF' }} title="Play / pause">
+              {playing ? '\u275A\u275A pause' : '\u25B6 play'}
+            </button>
+            <button data-nodrag onClick={fwd} style={tBtn} title="Forward 15s">{'ff \u23ED'}</button>
+            <button data-nodrag onClick={menu} style={tBtn} title="Toggle playlist / mini view">list</button>
           </div>
 
           {uri && (
@@ -206,6 +251,8 @@ export default function IPod({ hidden = false }) {
           )}
         </>
       )}
+
+      <style>{`@keyframes tapeSpin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }`}</style>
     </div>,
     document.body
   );

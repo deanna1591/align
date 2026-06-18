@@ -499,7 +499,7 @@ export default function StickerLayer({ dock = null }) {
           <div style={{ padding: 8 }}>
             {[
               { icon: '✂', label: 'stickers', action: () => { setDockOpen(false); setTrayOpen(true); }, state: null },
-              { icon: '♪', label: 'pod.exe', action: () => dock.onToggle('ipod'), state: dock.ipod },
+              { icon: '♪', label: 'tape.exe', action: () => dock.onToggle('ipod'), state: dock.ipod },
               { icon: '★', label: 'photobooth.exe', action: () => dock.onToggle('booth'), state: dock.booth },
             ].map(row => (
               <button key={row.label} onClick={row.action}
