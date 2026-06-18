@@ -31,7 +31,7 @@ export default function IPod({ hidden = false }) {
   const [minimized, setMinimized] = useState(false);
   const [uri, setUri] = useState(null);
   const [linkDraft, setLinkDraft] = useState('');
-  const [menuView, setMenuView] = useState(true); // tall playlist view vs mini
+  const [menuView, setMenuView] = useState(false); // false = compact now-playing, true = full tracklist
   const [playing, setPlaying] = useState(false);
   const [posSec, setPosSec] = useState(0);
   const dragRef = useRef(null);
@@ -178,8 +178,8 @@ export default function IPod({ hidden = false }) {
 
       {!minimized && (
         <>
-          {/* SCREEN */}
-          <div style={{ border: `2px solid ${INK}`, borderRadius: 8, overflow: 'hidden', background: '#0F1014', height: uri ? (menuView ? 300 : 84) : 150, position: 'relative' }}>
+          {/* SCREEN — height matches the Spotify embed exactly (no empty gap) */}
+          <div style={{ border: `2px solid ${INK}`, borderRadius: 8, overflow: 'hidden', background: '#0F1014', height: uri ? (menuView ? 352 : 152) : 150, position: 'relative' }}>
             {uri ? (
               <div data-nodrag ref={screenRef} style={{ width: '100%', height: '100%' }} />
             ) : (

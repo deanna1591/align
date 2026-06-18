@@ -292,10 +292,10 @@ export default function PhotoBooth({ hidden = false }) {
     setLightbox(null);
   };
 
-  if (!userId || !mounted) return null;
+  if (!userId || !mounted || hidden) return null;
 
   return createPortal(
-    <div style={{ position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 34, width: 'min(380px, calc(100vw - 20px))', display: hidden ? 'none' : undefined, background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 34, width: 'min(380px, calc(100vw - 20px))', background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>
       <style>{`
         @keyframes pbPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
         @keyframes pbPrint { from{ transform: translateY(-115%);} to{ transform: translateY(0);} }
