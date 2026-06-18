@@ -283,6 +283,28 @@ const STICKERS = {
 
 const STICKER_KEYS = Object.keys(STICKERS);
 
+// ---------- streak-gated unlocks ----------
+// Most stickers are always free. A handful unlock as you build a streak — a
+// little "ooh, new!" reward. Unlocking never removes anything, and a broken
+// streak never takes a sticker away (we track the best streak ever reached).
+const STICKER_UNLOCKS = {
+  crown: 3,
+  gem: 3,
+  rainbow: 7,
+  itgirl: 7,
+  drama: 14,
+  whatever: 14,
+  socute: 30,
+};
+const UNLOCK_AT = (k) => STICKER_UNLOCKS[k] || 0;
+function bestStreakEver(current) {
+  let best = current || 0;
+  try { best = Math.max(best, parseInt(localStorage.getItem('align_best_streak') || '0', 10) || 0); } catch {}
+  if (current > best) best = current;
+  try { localStorage.setItem('align_best_streak', String(best)); } catch {}
+  return best;
+}
+
 // ---------- cut-out alphabet (original ransom-note / scrapbook style) ----------
 // Each letter looks like it was scissored from a different magazine page:
 // its paper color, ink, font, and tilt are derived from the letter itself,
@@ -340,15 +362,18 @@ function StickerArt({ kind, scale = 1 }) {
 }
 
 // ---------- the layer ----------
-export default function StickerLayer({ dock = null }) {
+export default function StickerLayer({ dock = null, streak = 0 }) {
   const [userId, setUserId] = useState(null);
   const [items, setItems] = useState([]);
   const [trayOpen, setTrayOpen] = useState(false);
   const [dockOpen, setDockOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [best, setBest] = useState(0);
   const dragRef = useRef(null); // {id, startX, startY, origXPct, origYPct, moved}
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setBest(bestStreakEver(streak)); }, [streak]);
+  const isUnlocked = (k) => best >= UNLOCK_AT(k);
 
   useEffect(() => {
     const supabase = createClient();
@@ -501,6 +526,7 @@ export default function StickerLayer({ dock = null }) {
               { icon: '✂', label: 'stickers', action: () => { setDockOpen(false); setTrayOpen(true); }, state: null },
               { icon: '♪', label: 'tape.exe', action: () => dock.onToggle('ipod'), state: dock.ipod },
               { icon: '★', label: 'photobooth.exe', action: () => dock.onToggle('booth'), state: dock.booth },
+              { icon: '◕', label: 'buddy.exe', action: () => dock.onToggle('pet'), state: dock.pet },
             ].map(row => (
               <button key={row.label} onClick={row.action}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', borderRadius: 8, padding: '10px 8px', cursor: 'pointer', textAlign: 'left' }}>
@@ -537,13 +563,37 @@ export default function StickerLayer({ dock = null }) {
             <button onClick={() => setTrayOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'VT323, monospace', fontSize: '1.1rem', color: C.ink2 }}>✕</button>
           </div>
           <div style={{ padding: 12, maxHeight: '46vh', overflowY: 'auto' }}>
+            {(() => {
+              const lockedCount = STICKER_KEYS.filter(k => !isUnlocked(k)).length;
+              const nextAt = Math.min(...STICKER_KEYS.map(k => UNLOCK_AT(k)).filter(d => d > best), Infinity);
+              if (lockedCount === 0) return null;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 9px', borderRadius: 7, background: '#FFF3FA', border: `1.5px solid ${C.border}` }}>
+                  <span style={{ fontSize: 13 }}>✦</span>
+                  <span style={{ flex: 1, fontFamily: 'VT323, monospace', fontSize: '0.95rem', color: C.ink2, letterSpacing: '0.02em' }}>
+                    {Number.isFinite(nextAt) ? `${lockedCount} more unlock with streaks — next at ${nextAt} days ✦` : `${lockedCount} locked`}
+                  </span>
+                </div>
+              );
+            })()}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {STICKER_KEYS.map(k => (
-                <button key={k} onClick={() => addSticker(k)} title={k}
-                  style={{ background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 8, padding: '10px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64 }}>
-                  <StickerArt kind={k} scale={0.82} />
-                </button>
-              ))}
+              {STICKER_KEYS.map(k => {
+                const locked = !isUnlocked(k);
+                return (
+                  <button key={k} onClick={() => { if (!locked) addSticker(k); }} title={locked ? `unlocks at a ${UNLOCK_AT(k)}-day streak` : k}
+                    style={{ position: 'relative', background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 8, padding: '10px 4px', cursor: locked ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64 }}>
+                    <span style={{ opacity: locked ? 0.22 : 1, filter: locked ? 'grayscale(1)' : 'none' }}>
+                      <StickerArt kind={k} scale={0.82} />
+                    </span>
+                    {locked && (
+                      <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                        <span style={{ fontSize: 16 }}>🔒</span>
+                        <span style={{ fontFamily: 'VT323, monospace', fontSize: 11, color: C.ink2, lineHeight: 1 }}>{UNLOCK_AT(k)}d</span>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <div style={{ fontFamily: 'VT323, monospace', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: C.ink2, margin: '14px 0 8px' }}>
               cut-out letters ✂ spell anything

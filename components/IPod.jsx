@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { sfx } from '@/lib/sfx';
 
 const INK = '#36215C';
 const SHADOW = '4px 4px 0 rgba(54,33,92,0.20)';
@@ -95,7 +96,7 @@ export default function IPod({ hidden = false }) {
   }, [uri, minimized, menuView]);
 
   // ---------- transport actions ----------
-  const togglePlay = () => controllerRef.current?.togglePlay?.();
+  const togglePlay = () => { sfx.play('cassette'); controllerRef.current?.togglePlay?.(); };
   const back = () => controllerRef.current?.seek?.(posSec > 5 ? Math.max(0, posSec - 15) : 0);
   const fwd = () => controllerRef.current?.seek?.(posSec + 15);
   const menu = () => setMenuView(v => !v);

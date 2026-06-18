@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase-client';
+import { sfx } from '@/lib/sfx';
 
 const C = {
   ink: '#36215C', ink2: '#6E5499', ink3: '#9F88C9',
@@ -365,6 +366,7 @@ export default function PhotoBooth({ hidden = false }) {
         }
         setCount(null);
         setFlash(true);
+        sfx.play('shutter');
         await wait(120);
         frames.push(captureFrame());
         await wait(140);

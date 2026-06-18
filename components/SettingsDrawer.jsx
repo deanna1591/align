@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Calendar, Plus, Trash2, Check, ExternalLink, RefreshCw, AlertCircle, Type } from 'lucide-react';
+import { X, Calendar, Plus, Trash2, Check, ExternalLink, RefreshCw, AlertCircle, Type, Volume2, VolumeX } from 'lucide-react';
 import { createClient } from '@/lib/supabase-client';
+import { isMuted, setMuted, sfx } from '@/lib/sfx';
+import { WALLPAPERS, getWallpaper, setWallpaper } from '@/lib/wallpapers';
 
 // Mirrors CALENDAR_WRITE_SCOPE / CALENDAR_LIST_SCOPE from lib/google-oauth.js.
 // Kept inline so the client bundle never imports server-only OAuth helpers.
@@ -23,6 +25,23 @@ const palette = {
 };
 
 export default function SettingsDrawer({ open, onClose, user, textScale = 'default', onTextScaleChange }) {
+  // --- sound effects ---
+  const [muted, setMutedState] = useState(false);
+  useEffect(() => { setMutedState(isMuted()); }, [open]);
+  const toggleSound = () => {
+    const next = !muted;
+    setMuted(next); setMutedState(next);
+    if (!next) sfx.play('sparkle'); // preview when turning on
+  };
+
+  // --- wallpaper ---
+  const [wpId, setWpId] = useState('pinkgrid');
+  useEffect(() => { setWpId(getWallpaper().id); }, [open]);
+  const pickWallpaper = (id) => {
+    setWallpaper(id); setWpId(id);
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('align-wallpaper-change'));
+  };
+
   // --- iCal feeds (unchanged) ---
   const [feeds, setFeeds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -403,9 +422,83 @@ export default function SettingsDrawer({ open, onClose, user, textScale = 'defau
           </section>
 
 
-          {/* ============================================================
-              GOOGLE CALENDAR
-              ============================================================ */}
+          {/* SOUND EFFECTS — persisted to localStorage. */}
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              {muted ? <VolumeX size={14} style={{ color: palette.accent }} /> : <Volume2 size={14} style={{ color: palette.accent }} />}
+              <h3 style={{
+                fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', fontWeight: 600,
+                letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2,
+              }}>
+                Sound effects
+              </h3>
+            </div>
+            <p style={{ fontFamily: 'VT323, monospace', fontStyle: 'italic', fontSize: '0.85rem', color: palette.ink3, marginBottom: 12 }}>
+              Little clicks, chimes, and a camera shutter. Off by default if you like it quiet.
+            </p>
+            <button
+              onClick={toggleSound}
+              className="w-full flex items-center justify-between py-3 px-4 rounded transition-colors"
+              style={{
+                background: !muted ? palette.accentSoft : palette.bg,
+                border: `1px solid ${!muted ? palette.accent : palette.border}`,
+                color: !muted ? palette.accent : palette.ink2,
+                cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif',
+              }}
+              aria-pressed={!muted}
+            >
+              <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{muted ? 'Sounds are off' : 'Sounds are on'}</span>
+              <span style={{
+                width: 42, height: 24, borderRadius: 999, position: 'relative', flexShrink: 0,
+                background: !muted ? palette.accent : palette.border, transition: 'background 0.2s',
+              }}>
+                <span style={{
+                  position: 'absolute', top: 2, left: !muted ? 20 : 2, width: 20, height: 20, borderRadius: 999,
+                  background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                }} />
+              </span>
+            </button>
+          </section>
+
+          {/* WALLPAPER — persisted to localStorage; applies live to the app background. */}
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Type size={14} style={{ color: palette.accent }} />
+              <h3 style={{
+                fontFamily: 'Inter Tight, sans-serif', fontSize: '0.7rem', fontWeight: 600,
+                letterSpacing: '0.15em', textTransform: 'uppercase', color: palette.ink2,
+              }}>
+                Wallpaper
+              </h3>
+            </div>
+            <p style={{ fontFamily: 'VT323, monospace', fontStyle: 'italic', fontSize: '0.85rem', color: palette.ink3, marginBottom: 12 }}>
+              Dress up your desktop. Pick a vibe.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {WALLPAPERS.map(wp => {
+                const active = wpId === wp.id;
+                return (
+                  <button
+                    key={wp.id}
+                    onClick={() => pickWallpaper(wp.id)}
+                    className="flex flex-col items-center gap-2 py-2 rounded transition-all"
+                    style={{
+                      background: active ? palette.accentSoft : palette.bg,
+                      border: `2px solid ${active ? palette.accent : palette.border}`,
+                      cursor: 'pointer', fontFamily: 'Inter Tight, sans-serif',
+                    }}
+                    aria-pressed={active}
+                  >
+                    <span style={{
+                      width: '100%', height: 36, borderRadius: 4, border: `1px solid ${palette.border}`,
+                      ...wp.css, backgroundAttachment: 'local',
+                    }} />
+                    <span style={{ fontSize: '0.66rem', fontWeight: 500, letterSpacing: '0.03em', color: active ? palette.accent : palette.ink2, whiteSpace: 'nowrap' }}>{wp.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
           <section style={{ marginBottom: 32 }}>
             <div className="flex items-center gap-2 mb-2">
               <Calendar size={14} style={{ color: palette.accent }} />

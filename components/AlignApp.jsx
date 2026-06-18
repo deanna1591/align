@@ -13,7 +13,10 @@ import UnshapedDaily from '@/components/UnshapedDaily';
 import PhotoBooth from '@/components/PhotoBooth';
 import StickerLayer from '@/components/StickerLayer';
 import IPod from '@/components/IPod';
+import DeskPet from '@/components/DeskPet';
 import { getDailyQuote, getCompletionQuote } from '@/lib/quotes';
+import { sfx } from '@/lib/sfx';
+import { getWallpaper } from '@/lib/wallpapers';
 import SettingsDrawer from './SettingsDrawer';
 import QuickCaptureDrawer from './QuickCaptureDrawer';
 import Lists from './Lists';
@@ -433,7 +436,7 @@ function TaskRow({ task, dKey, lists, onToggle, onEdit, onDelete, onStart, onPau
   const handleToggle = () => {
     const willComplete = !task.completed;
     onToggle(task.id);
-    if (willComplete) { setPop(true); setTimeout(() => setPop(false), 760); }
+    if (willComplete) { setPop(true); sfx.play('check'); setTimeout(() => setPop(false), 760); }
   };
   const swipeStart = useRef(null);
   const inMotion = task.started && !task.completed;
@@ -1031,23 +1034,84 @@ function FocusLane({ open, task, onClose, onComplete, onUpdateNotes }) {
 // ============================================================
 //  DAILY CLOSURE
 // ============================================================
+function Confetti() {
+  // Lightweight y2k confetti: pixel hearts, stars, and sparkles rain once.
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const resize = () => { canvas.width = window.innerWidth * DPR; canvas.height = window.innerHeight * DPR; };
+    resize();
+    const COLORS = ['#FF5FB0', '#FCD93D', '#9B5CFF', '#3FB8DE', '#FF8FCB'];
+    const SHAPES = ['heart', 'star', 'square', 'sparkle'];
+    const N = window.innerWidth < 640 ? 70 : 120;
+    const parts = Array.from({ length: N }, () => ({
+      x: Math.random() * canvas.width,
+      y: -Math.random() * canvas.height * 0.5,
+      vx: (Math.random() - 0.5) * 1.4 * DPR,
+      vy: (1.6 + Math.random() * 2.6) * DPR,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.25,
+      size: (7 + Math.random() * 9) * DPR,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
+      life: 1,
+    }));
+    const drawHeart = (s) => { ctx.beginPath(); ctx.moveTo(0, s*0.3); ctx.bezierCurveTo(0,0,-s,-s*0.3,-s,s*0.15); ctx.bezierCurveTo(-s,s*0.6,0,s*0.85,0,s); ctx.bezierCurveTo(0,s*0.85,s,s*0.6,s,s*0.15); ctx.bezierCurveTo(s,-s*0.3,0,0,0,s*0.3); ctx.fill(); };
+    const drawStar = (s) => { ctx.beginPath(); for (let i=0;i<10;i++){ const a=(Math.PI/5)*i - Math.PI/2; const r=i%2===0?s:s*0.45; ctx[i?'lineTo':'moveTo'](Math.cos(a)*r, Math.sin(a)*r);} ctx.closePath(); ctx.fill(); };
+    const drawSparkle = (s) => { ctx.beginPath(); ctx.moveTo(0,-s); ctx.quadraticCurveTo(0,0,s,0); ctx.quadraticCurveTo(0,0,0,s); ctx.quadraticCurveTo(0,0,-s,0); ctx.quadraticCurveTo(0,0,0,-s); ctx.fill(); };
+    let raf, frame = 0;
+    const tick = () => {
+      frame++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      for (const p of parts) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.02 * DPR; p.rot += p.vr;
+        if (frame > 140) p.life -= 0.02;
+        if (p.y < canvas.height + 40 && p.life > 0) alive = true;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color;
+        if (p.shape === 'heart') drawHeart(p.size);
+        else if (p.shape === 'star') drawStar(p.size);
+        else if (p.shape === 'sparkle') drawSparkle(p.size);
+        else ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+        ctx.restore();
+      }
+      if (alive) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    window.addEventListener('resize', resize);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
+  }, []);
+  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 55 }} aria-hidden="true" />;
+}
+
 function DailyClosure({ open, onClose, todayTasks, stats }) {
   if (!open) return null;
   const completed = todayTasks.filter(t => t.completed);
   const inMotion = todayTasks.filter(t => !t.completed && t.started);
+  const celebrate = completed.length >= 3; // closed the day → full celebration
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8" style={{ background: 'rgba(255,255,255,0.96)' }}>
+      {completed.length > 0 && <Confetti />}
       <button onClick={onClose} className="absolute top-6 right-6 p-2 rounded hover:bg-black/[0.04]" style={{ color: palette.ink2 }}><X size={18} /></button>
       <div className="max-w-[560px] w-full">
         <div className="text-center">
           <Sunrise size={28} style={{ color: palette.accent }} className="mx-auto mb-4" />
-          <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: palette.ink2 }}>End of day</p>
+          <p style={{ fontFamily: 'Inter Tight, sans-serif', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: palette.ink2 }}>{celebrate ? '✦ you did the thing ✦' : 'End of day'}</p>
           <h1 style={{
             fontFamily: 'VT323, monospace', fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
             fontWeight: 400, color: palette.ink, marginTop: 12, lineHeight: 1.15,
             letterSpacing: '-0.025em', fontVariationSettings: "'SOFT' 100, 'opsz' 144",
           }}>
-            {completed.length > 0 ? `You moved ${completed.length} thing${completed.length === 1 ? '' : 's'} forward today.` : 'A quieter day. That counts too.'}
+            {celebrate
+              ? 'Day closed. You showed up. ✦'
+              : completed.length > 0
+                ? `You moved ${completed.length} thing${completed.length === 1 ? '' : 's'} forward today.`
+                : 'A quieter day. That counts too.'}
           </h1>
         </div>
         <div className="mt-12 space-y-10">
@@ -1217,6 +1281,13 @@ export default function AlignApp() {
   const [brainOpen, setBrainOpen] = useState(false);
   const [focusTask, setFocusTask] = useState(null);
   const [closureOpen, setClosureOpen] = useState(false);
+  const [wallpaper, setWallpaperState] = useState(null);
+  useEffect(() => {
+    setWallpaperState(getWallpaper());
+    const onChange = () => setWallpaperState(getWallpaper());
+    window.addEventListener('align-wallpaper-change', onChange);
+    return () => window.removeEventListener('align-wallpaper-change', onChange);
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [dragState, setDragState] = useState(null);
@@ -1388,8 +1459,9 @@ export default function AlignApp() {
     try { v = JSON.parse(localStorage.getItem('align_floats') || 'null'); } catch {}
     if (!v || typeof v.ipod !== 'boolean') {
       const desktop = window.matchMedia('(min-width: 768px)').matches;
-      v = { ipod: desktop, booth: desktop };
+      v = { ipod: desktop, booth: desktop, pet: desktop };
     }
+    if (typeof v.pet !== 'boolean') v.pet = window.matchMedia('(min-width: 768px)').matches;
     setFloats(v);
   }, []);
   const toggleFloat = (key) => setFloats(f => {
@@ -1514,9 +1586,12 @@ export default function AlignApp() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#FEFBFD',
-      backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
-      backgroundSize: '22px 22px',
+      ...(wallpaper ? wallpaper.css : {
+        backgroundColor: '#FEFBFD',
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px)',
+        backgroundSize: '22px 22px',
+      }),
+      backgroundAttachment: 'fixed',
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Fraunces:opsz,wght,SOFT@9..144,300..600,30..100&family=Inter+Tight:wght@400;500;600;700&display=swap');
@@ -1622,7 +1697,7 @@ export default function AlignApp() {
             </div>
             <button onClick={() => setBrainOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Brain dump (B)"><Brain size={14} /></button>
-            <button onClick={() => setClosureOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
+            <button onClick={() => { setClosureOpen(true); if (todayTasks.filter(t => t.completed).length >= 3) sfx.play('chime'); }} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="End of day"><Sunrise size={14} /></button>
             <button onClick={() => setSettingsOpen(true)} className="p-2 rounded-full transition-colors hover:bg-black/[0.04]"
               style={{ color: palette.ink2, border: `1px solid ${palette.border}` }} title="Settings"><Settings size={14} /></button>
@@ -2105,9 +2180,10 @@ export default function AlignApp() {
         onUpdateNotes={(notes) => focusTask && s.updateTaskNotes(focusTask.dKey, focusTask.task.id, notes)} />
       <DailyClosure open={closureOpen} onClose={() => setClosureOpen(false)} todayTasks={todayTasks} stats={s.stats} />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} user={s.user} textScale={textScale} onTextScaleChange={setTextScale} />
-      <StickerLayer dock={floats ? { ipod: floats.ipod, booth: floats.booth, onToggle: toggleFloat } : null} />
+      <StickerLayer dock={floats ? { ipod: floats.ipod, booth: floats.booth, pet: floats.pet, onToggle: toggleFloat } : null} streak={s.stats?.streak || 0} />
       {floats && <PhotoBooth hidden={!floats.booth} />}
       {floats && <IPod hidden={!floats.ipod} />}
+      {floats && <DeskPet hidden={!floats.pet} streak={s.stats?.streak || 0} />}
       <QuickCaptureDrawer
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
