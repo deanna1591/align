@@ -911,19 +911,28 @@ function BrainDump({ open, onClose, items, onAdd, onDelete, onPromote }) {
               <p style={{ fontFamily: 'VT323, monospace', fontSize: '0.95rem', color: palette.ink3, fontStyle: 'italic' }}>Nothing here yet.</p>
             </div>
           ) : (
+            <>
             <ul className="space-y-3">
               {items.map(item => (
                 <li key={item.id} className="group flex items-start gap-2 py-1">
                   <span className="mt-2 w-1 h-1 rounded-full flex-shrink-0" style={{ background: palette.ink3 }} />
-                  <div className="flex-1 text-[0.875rem] leading-snug" style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink }}>{item.text}</div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex-1 text-[0.875rem] leading-snug" style={{ fontFamily: 'Inter Tight, sans-serif', color: palette.ink, minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{item.text}</div>
+                  <div className="bd-actions flex items-center gap-1 flex-shrink-0">
                     <button onClick={() => onPromote(item.id)} className="text-[0.625rem] px-2 py-0.5 rounded transition-colors"
-                      style={{ color: palette.accent, fontFamily: 'Inter Tight, sans-serif', border: `1px solid ${palette.accent}`, fontWeight: 500 }} title="Move to today">→ today</button>
-                    <button onClick={() => onDelete(item.id)} style={{ color: palette.ink3 }}><X size={12} /></button>
+                      style={{ color: palette.accent, fontFamily: 'Inter Tight, sans-serif', border: `1px solid ${palette.accent}`, fontWeight: 500, whiteSpace: 'nowrap' }} title="Move to today">→ today</button>
+                    <button onClick={() => onDelete(item.id)} style={{ color: palette.ink3 }} title="Delete"><X size={12} /></button>
                   </div>
                 </li>
               ))}
             </ul>
+            <style>{`
+              /* Desktop: reveal actions on hover. Touch devices: always show them. */
+              @media (hover: hover) {
+                .bd-actions { opacity: 0; transition: opacity 0.15s; }
+                .group:hover .bd-actions { opacity: 1; }
+              }
+            `}</style>
+            </>
           )}
         </div>
       </div>
@@ -1623,7 +1632,7 @@ export default function AlignApp() {
         </header>
 
         {appMode === 'os' ? (
-          <OperatingSystem userId={s.user?.id} />
+          <OperatingSystem userId={s.user?.id} userEmail={s.user?.email} />
         ) : (
         <>
         <div className="flex items-center justify-between mb-6">

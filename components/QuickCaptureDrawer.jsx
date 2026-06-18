@@ -251,11 +251,11 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
             }}>{error}</p>
           )}
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <button
               onClick={listening ? stopListening : startListening}
               disabled={!speechSupported.current}
-              className="flex items-center gap-2 px-4 py-2 rounded-full transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-full transition-all flex-shrink-0"
               style={{
                 background: listening ? palette.accent : 'transparent',
                 color: listening ? 'white' : palette.ink2,
@@ -278,7 +278,7 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
               )}
             </button>
 
-            <div className="flex items-center gap-2" style={{
+            <div className="hidden sm:flex items-center gap-2" style={{
               fontFamily: 'Inter Tight, sans-serif',
               fontSize: '0.7rem',
               color: palette.ink3,
@@ -295,7 +295,7 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
             <button
               onClick={submit}
               disabled={!text.trim() || saving}
-              className="flex items-center gap-2 px-5 py-2 rounded-full transition-all"
+              className="flex items-center gap-2 px-5 py-2 rounded-full transition-all flex-shrink-0"
               style={{
                 background: text.trim() && !saving ? palette.accent : palette.border,
                 color: text.trim() && !saving ? 'white' : palette.ink3,
