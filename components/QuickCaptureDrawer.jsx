@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Mic, MicOff, Send, Brain } from 'lucide-react';
+import { hasSpeechRecognition } from '@/lib/capabilities';
 
 const palette = {
   bg: '#FFFFFF',
@@ -29,10 +30,10 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
   const [interimText, setInterimText] = useState('');
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
-  const speechSupported = useRef(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
 
   useEffect(() => {
-    speechSupported.current = !!getSpeechRecognition();
+    setSpeechSupported(hasSpeechRecognition());
   }, []);
 
   useEffect(() => {
@@ -252,31 +253,33 @@ export default function QuickCaptureDrawer({ open, onClose, onCapture, onCreateE
           )}
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <button
-              onClick={listening ? stopListening : startListening}
-              disabled={!speechSupported.current}
-              className="flex items-center gap-2 px-4 py-2 rounded-full transition-all flex-shrink-0"
-              style={{
-                background: listening ? palette.accent : 'transparent',
-                color: listening ? 'white' : palette.ink2,
-                border: `1px solid ${listening ? palette.accent : palette.border}`,
-                fontFamily: 'Inter Tight, sans-serif',
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                opacity: speechSupported.current ? 1 : 0.4,
-                cursor: speechSupported.current ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {listening ? (
-                <>
-                  <MicOff size={13} /> Stop
-                </>
-              ) : (
-                <>
-                  <Mic size={13} /> {speechSupported.current ? 'Voice' : 'No mic'}
-                </>
-              )}
-            </button>
+            {speechSupported ? (
+              <button
+                onClick={listening ? stopListening : startListening}
+                className="flex items-center gap-2 px-4 py-2 rounded-full transition-all flex-shrink-0"
+                style={{
+                  background: listening ? palette.accent : 'transparent',
+                  color: listening ? 'white' : palette.ink2,
+                  border: `1px solid ${listening ? palette.accent : palette.border}`,
+                  fontFamily: 'Inter Tight, sans-serif',
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                {listening ? (
+                  <>
+                    <MicOff size={13} /> Stop
+                  </>
+                ) : (
+                  <>
+                    <Mic size={13} /> Voice
+                  </>
+                )}
+              </button>
+            ) : (
+              <span />
+            )}
 
             <div className="hidden sm:flex items-center gap-2" style={{
               fontFamily: 'Inter Tight, sans-serif',

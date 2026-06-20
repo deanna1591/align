@@ -10,6 +10,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase-client';
 import { sfx } from '@/lib/sfx';
+import { hasCamera } from '@/lib/capabilities';
 
 const C = {
   ink: '#36215C', ink2: '#6E5499', ink3: '#9F88C9',
@@ -192,6 +193,10 @@ export default function PhotoBooth({ hidden = false }) {
 
   const openBooth = async () => {
     setErr('');
+    if (!hasCamera()) {
+      setErr('The photobooth needs a camera, which isn\u2019t available here. Try opening Align in your browser.');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
@@ -413,6 +418,9 @@ export default function PhotoBooth({ hidden = false }) {
   };
 
   if (!userId || !mounted || hidden) return null;
+  // No camera in this environment (e.g. iOS webview wrapper) → don't show a
+  // booth that can't work. The feature remains available in the browser.
+  if (!hasCamera()) return null;
 
   return createPortal(
     <div style={{ position: 'absolute', left: `${pos.xp}%`, top: pos.y, zIndex: 34, width: 'min(380px, calc(100vw - 20px))', background: C.card, border: `2px solid ${C.ink}`, borderRadius: 12, boxShadow: C.shadowStrong, overflow: 'hidden' }}>

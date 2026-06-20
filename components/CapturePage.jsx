@@ -633,9 +633,10 @@ export default function CapturePage({ userId }) {
         gap: 10,
         background: palette.bgRaised,
       }}>
+        {speechSupported.current && (
         <button
           onClick={listening ? stopListening : startListening}
-          disabled={!speechSupported.current || isBusy}
+          disabled={isBusy}
           style={{
             flex: 1,
             padding: '14px',
@@ -650,13 +651,14 @@ export default function CapturePage({ userId }) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            opacity: speechSupported.current && !isBusy ? 1 : 0.4,
-            cursor: speechSupported.current && !isBusy ? 'pointer' : 'not-allowed',
+            opacity: !isBusy ? 1 : 0.4,
+            cursor: !isBusy ? 'pointer' : 'not-allowed',
             touchAction: 'manipulation',
           }}
         >
           {listening ? (<><MicOff size={16} /> Stop</>) : (<><Mic size={16} /> Voice</>)}
         </button>
+        )}
 
         <button
           onClick={submit}
